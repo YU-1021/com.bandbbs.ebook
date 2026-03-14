@@ -226,6 +226,13 @@
 		  value: this.chapterListItemMarqueeEnabled.toString()
 	  });
 	},
+	toggleChapterTitleMarquee() {
+	  this.chapterTitleMarqueeEnabled = !this.chapterTitleMarqueeEnabled;
+	  storage.set({
+		  key: 'EBOOK_CHAPTER_TITLE_MARQUEE_ENABLED',
+		  value: this.chapterTitleMarqueeEnabled.toString()
+	  });
+	},
 	toggleTextReaderMarquee() {
 	  this.textReaderMarqueeEnabled = !this.textReaderMarqueeEnabled;
 	  storage.set({
