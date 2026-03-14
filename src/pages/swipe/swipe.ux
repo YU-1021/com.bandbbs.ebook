@@ -79,7 +79,14 @@
 				} else if (data == "row") {
 					this.onSelect = 1;
 				}
-				this.updateScene();
+				storage.get({
+					key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED',
+					success: (sideClickEnabled) => {
+						if (data == "column" && (sideClickEnabled === 'true' || sideClickEnabled === true)) {
+							this.onSelect = 4;
+						}
+					}
+				});
 			}
 		});
 	},
@@ -113,19 +120,27 @@
 			if (this.onSelect != 2) {
 				this.onSelect = 2;
 				storage.set({ key: 'EBOOK_SWIPE', value: 'column' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'false' });
 			}
 		} else if (fun == '1') {
 			if (this.onSelect != 1) {
 				this.onSelect = 1;
 				storage.set({ key: 'EBOOK_SWIPE', value: 'row' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'false' });
+			}
+		} else if (fun == '4') {
+			if (this.onSelect != 4) {
+				this.onSelect = 4;
+				storage.set({ key: 'EBOOK_SWIPE', value: 'column' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'true' });
 			}
 		} else {
 			if (this.onSelect != 3) {
 				this.onSelect = 3;
 				storage.set({ key: 'EBOOK_SWIPE', value: 'off' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'false' });
 			}
 		}
-		this.updateScene();
 	},
 
 	routerTo(url) {
