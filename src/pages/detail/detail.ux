@@ -1,6 +1,5 @@
 <template>
 	<div class="page">
-		<div if="{{swipe === 'column' && swipeSideClickEnabled}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
 		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 432px; height: {{scrollHeight}}px; top: {{verticalMargin}}px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
 			<div id="contentContainer" style="position: absolute; width:432px; flex-direction: column;">
 				<div if="{{chapterSwitchStyle == 'button' && currentChapterIndexInAll > 0}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onPrevChapterClick">
@@ -34,7 +33,9 @@
 				<text id="box2" if="{{nostalgicPreViewShowFlag}}" style="lines: -1; width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopPreview}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicTextPre}}</text>
 			</div>
 		</div>
-
+		
+		<div if="{{swipe === 'column' && swipeSideClickEnabled}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
+		
 		<img show="{{showSetting || (alwaysShowTime && !isNearTopForHd)}}" src="/common/images/hd.png" style="position: absolute;left: 0px;top: 0px;width: 432px;height: 122px;" />
 		<img show="{{showSetting}}" src="/common/images/back.png" @click="back" style="position: absolute;left: 38px;top: 24px;width: 82px;height: 82px;" />
 		<img show="{{showSetting}}" src="/common/images/more.png" @click="gotoSetting" style="position: absolute;left: 322px;top: 24px;width: 82px;height: 82px;" />

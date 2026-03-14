@@ -22,12 +22,19 @@
 			  </div>
 			  <img src="{{bookinfoMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
 		  </list-item>
-		  <list-item class="item" @click="toggleChapterListMarquee" type="item">
+		  <list-item class="item" @click="toggleChapterListItemMarquee" type="item">
+			  <div class="item-content">
+				  <text class="itemtext" static>章节列表</text>
+				  <text class="itemtext2" static>章节标题滚动</text>
+			  </div>
+			  <img src="{{chapterListItemMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
+		  </list-item>
+		  <list-item class="item" @click="toggleChapterTitleMarquee" type="item">
 			  <div class="item-content">
 				  <text class="itemtext" static>章节列表</text>
 				  <text class="itemtext2" static>页面标题滚动</text>
 			  </div>
-			  <img src="{{chapterListMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
+			  <img src="{{chapterTitleMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
 		  </list-item>
 		  <list-item class="item" @click="toggleTextReaderMarquee" type="item">
 			  <div class="item-content">
@@ -73,6 +80,7 @@
 	  bookmarkMarqueeEnabled: false,
 	  bookinfoMarqueeEnabled: true,
 	  chapterListMarqueeEnabled: false,
+	  chapterTitleMarqueeEnabled: false,
 	  textReaderMarqueeEnabled: false,
 	  detailMarqueeEnabled: false,
 	  detailProgressMarqueeEnabled: false,
@@ -94,27 +102,70 @@
 	  });
   
 	  this.timer = setInterval(() => {
-		this.updateTime();
-	  }, 60000);
-  
-	  const settings = [
-		{ key: 'EBOOK_SHELF_MARQUEE_ENABLED', prop: 'shelfMarqueeEnabled', default: 'false' },
-		{ key: 'EBOOK_BOOKMARK_MARQUEE_ENABLED', prop: 'bookmarkMarqueeEnabled', default: 'false' },
-		{ key: 'EBOOK_BOOKINFO_MARQUEE_ENABLED', prop: 'bookinfoMarqueeEnabled', default: 'true' },
-		{ key: 'EBOOK_CHAPTER_LIST_MARQUEE_ENABLED', prop: 'chapterListMarqueeEnabled', default: 'false' },
-		{ key: 'EBOOK_TEXT_READER_MARQUEE_ENABLED', prop: 'textReaderMarqueeEnabled', default: 'false' },
-		{ key: 'EBOOK_DETAIL_MARQUEE_ENABLED', prop: 'detailMarqueeEnabled', default: 'false' },
-		{ key: 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED', prop: 'detailProgressMarqueeEnabled', default: 'false' }
-	  ];
-  
-	  settings.forEach(setting => {
-		storage.get({
-		  key: setting.key,
-		  default: setting.default,
-		  success: (data) => {
-			this[setting.prop] = data === 'true';
-		  }
-		});
+		  this.updateTime();
+	  }, 1000);
+	  storage.get({
+		key: 'EBOOK_SHELF_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.shelfMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_BOOKMARK_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.bookmarkMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_BOOKINFO_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.bookinfoMarqueeEnabled = data === 'true'
+		},
+		default: 'true'
+	  });
+	  storage.get({
+		key: 'EBOOK_CHAPTER_LIST_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.chapterListMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_CHAPTER_LIST_ITEM_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.chapterListItemMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_CHAPTER_TITLE_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.chapterTitleMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_TEXT_READER_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.textReaderMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_DETAIL_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.detailMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.detailProgressMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
 	  });
 	},
   
@@ -164,7 +215,17 @@
   
 	toggleChapterListMarquee() {
 	  this.chapterListMarqueeEnabled = !this.chapterListMarqueeEnabled;
-	  storage.set({ key: 'EBOOK_CHAPTER_LIST_MARQUEE_ENABLED', value: this.chapterListMarqueeEnabled.toString() });
+	  storage.set({
+		  key: 'EBOOK_CHAPTER_LIST_MARQUEE_ENABLED',
+		  value: this.chapterListMarqueeEnabled.toString()
+	  });
+	},
+	toggleChapterListItemMarquee() {
+	  this.chapterListItemMarqueeEnabled = !this.chapterListItemMarqueeEnabled;
+	  storage.set({
+		  key: 'EBOOK_CHAPTER_LIST_ITEM_MARQUEE_ENABLED',
+		  value: this.chapterListItemMarqueeEnabled.toString()
+	  });
 	},
   
 	toggleTextReaderMarquee() {
