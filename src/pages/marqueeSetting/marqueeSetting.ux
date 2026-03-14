@@ -89,7 +89,7 @@
 	  shelfMarqueeEnabled: false,
 	  bookmarkMarqueeEnabled: false,
 	  bookinfoMarqueeEnabled: true,
-	  chapterListMarqueeEnabled: false,
+	  chapterListItemMarqueeEnabled: false,
 	  chapterTitleMarqueeEnabled: false,
 	  textReaderMarqueeEnabled: false,
 	  detailMarqueeEnabled: false,
