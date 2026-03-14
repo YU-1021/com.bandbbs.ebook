@@ -1,5 +1,6 @@
 <template>
 	<div class="page">
+		<div if="{{swipe === 'column' && swipeSideClickEnabled}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
 		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 432px; height: {{scrollHeight}}px; top: {{verticalMargin}}px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
 			<div id="contentContainer" style="position: absolute; width:432px; flex-direction: column;">
 				<div if="{{chapterSwitchStyle == 'button' && currentChapterIndexInAll > 0}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onPrevChapterClick">
@@ -27,6 +28,7 @@
 		</scroll>
 		
 		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" onlongpress="onTxtLongPress">
+			<div if="{{nostalgicPageTurnMode === 'swipe' && swipeSideClickEnabled}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
 			<div id="nostalgicContainer" style="position: absolute; width: 432px; height: {{pageHeigh}}px; top: {{nostalgicTop}}px; overflow: hidden; pointer-events: none;">
 				<text id="box1" style="lines: -1; width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
 				<text id="box2" if="{{nostalgicPreViewShowFlag}}" style="lines: -1; width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopPreview}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicTextPre}}</text>
@@ -160,6 +162,7 @@ export default {
 		textReaderMarqueeEnabled: false,
 		detailProgressMarqueeEnabled: false,
 		boldEnabled: true,
+		swipeSideClickEnabled: false,
 		chapterStartEmptyLines: false,
 		chapterStartNumber: false,
 		chapterStartName: false,
@@ -276,7 +279,7 @@ export default {
 			'EBOOK_ALWAYS_SHOW_TIME', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY', 'EBOOK_ALWAYS_SHOW_BATTERY', 'EBOOK_READ_MODE',
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED', 'EBOOK_NOSTALGIC_PAGE_TURN_MODE',
 			'EBOOK_BOLD_ENABLED', 'EBOOK_CHAPTER_START_EMPTY_LINES', 'EBOOK_CHAPTER_START_NUMBER', 'EBOOK_CHAPTER_START_NAME',
-			'EBOOK_CHAPTER_START_WORD_COUNT', 'EBOOK_CHAPTER_SWITCH_SHOW_INFO'
+			'EBOOK_CHAPTER_START_WORD_COUNT', 'EBOOK_CHAPTER_SWITCH_SHOW_INFO', 'EBOOK_SWIPE_SIDE_CLICK_ENABLED'
 		];
 		const defaults = {
 			'EBOOK_TXTSZPAGE': 400, 'EBOOK_VERTICAL_MARGIN': 10, 'EBOOK_FONT': 30, 'EBOOK_OPACITY': 100, 'EBOOK_SWIPE': 'column',
@@ -287,7 +290,7 @@ export default {
 			'EBOOK_ALWAYS_SHOW_TIME': false, 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 200, 'EBOOK_ALWAYS_SHOW_BATTERY': true, 'EBOOK_READ_MODE': 'scroll',
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED': false, 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': false, 'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'topBottomClick',
 			'EBOOK_BOLD_ENABLED': true, 'EBOOK_CHAPTER_START_EMPTY_LINES': false, 'EBOOK_CHAPTER_START_NUMBER': false, 'EBOOK_CHAPTER_START_NAME': false,
-			'EBOOK_CHAPTER_START_WORD_COUNT': false, 'EBOOK_CHAPTER_SWITCH_SHOW_INFO': false
+			'EBOOK_CHAPTER_START_WORD_COUNT': false, 'EBOOK_CHAPTER_SWITCH_SHOW_INFO': false, 'EBOOK_SWIPE_SIDE_CLICK_ENABLED': false
 		};
 		const mapping = {
 			'EBOOK_TXTSZPAGE': 'txtSizePage', 'EBOOK_VERTICAL_MARGIN': 'verticalMargin', 'EBOOK_FONT': 'fontSize', 'EBOOK_OPACITY': 'opacity',
@@ -300,7 +303,7 @@ export default {
 			'EBOOK_READ_MODE': 'readMode', 'EBOOK_TEXT_READER_MARQUEE_ENABLED': 'textReaderMarqueeEnabled', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': 'detailProgressMarqueeEnabled',
 			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
 			'EBOOK_CHAPTER_START_NUMBER': 'chapterStartNumber', 'EBOOK_CHAPTER_START_NAME': 'chapterStartName', 'EBOOK_CHAPTER_START_WORD_COUNT': 'chapterStartWordCount',
-			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo'
+			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo', 'EBOOK_SWIPE_SIDE_CLICK_ENABLED': 'swipeSideClickEnabled'
 		};
 
 		const promises = keys.map(key => new Promise(resolve => {
@@ -1398,6 +1401,18 @@ export default {
 		} else {
 			if (this.showSetting) this.showSetting = false;
 			else actionCallback(event);
+		}
+	},
+
+	onScrollSideClick(event) {
+		if (this.showSetting) this.showSetting = false;
+		const clickX = (event && event.offsetX) || (event && event.detail && event.detail.x) || 0;
+		if (clickX < 432 / 3) {
+			if (this.isAtChapterStart) this.changeChapter(-1);
+			else this.lastPage();
+		} else if (clickX > 432 * 2 / 3) {
+			if (this.isAtChapterEnd) this.changeChapter(1);
+			else this.nextPage();
 		}
 	},
 

@@ -1,6 +1,5 @@
 <template>
 	<div class="page" style="flex-direction: column;">
-
 	  <list class="list">
 		  <list-item class="item {{onSelect==2?'item2':''}}" @click="select('2')" type="item">
 			<div class="item-content">
@@ -17,11 +16,17 @@
 			</div>
 			<img src="/common/images/check.png" style="width:40px;height: 40px;" if="{{onSelect==3}}"/>
 		  </list-item>
-	  </list>
-      
-      <!-- 用于强制触发视图更新的隐藏节点 -->
-	  <text style="position: absolute;top:-100px;left:0px;">{{txtNum}}</text>
 
+		  <list-item class="item {{onSelect==4?'item2':''}}" @click="select('4')" type="item">
+			<div class="item-content">
+				<text class="itemtext" static>左右点击</text>
+				<text class="itemtext2" static>点击左右两侧翻页</text>
+			</div>
+			<img src="/common/images/check.png" style="width:40px;height: 40px;" if="{{onSelect==4}}"/>
+		  </list-item>
+	  </list>
+
+	  <img static src="/common/images/hd.png" style="position: absolute;left: 0px;top: 0px;width: 432px;height: 102px;" />
 	  <img static src="/common/images/back.png" @click="back" style="position: absolute;left: 38px;top: 24px;width: 82px;height: 82px;"/>
 	  <img static src="/common/images/info.png" @click="routerTo('info')" style="position: absolute;left: 322px;top: 24px;width: 82px;height: 82px;"/>
 	  
@@ -29,7 +34,7 @@
 		{{nowTime}}
 	  </text>
 	  <text static style="position: absolute;left: 130px;top: 46px;width: 172px;line-height: 42px;font-weight:bold;font-size:32px;color:white;text-align:center;">
-		滑动翻页
+		滚动方式
 	  </text>
 	</div>
 </template>
@@ -41,7 +46,6 @@ import storage from '../../utils/storage.js'
 export default {
 	private: {
 		onSelect: 3,
-		txtNum: 0,
 		nowTime: "00:00",
 		timer: null,
 		timeFormat: '24h'
@@ -75,7 +79,14 @@ export default {
 				} else if (data == "row") {
 					this.onSelect = 1;
 				}
-				this.updateScene();
+				storage.get({
+					key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED',
+					success: (sideClickEnabled) => {
+						if (data == "column" && (sideClickEnabled === 'true' || sideClickEnabled === true)) {
+							this.onSelect = 4;
+						}
+					}
+				});
 			}
 		});
 	},
@@ -109,19 +120,27 @@ export default {
 			if (this.onSelect != 2) {
 				this.onSelect = 2;
 				storage.set({ key: 'EBOOK_SWIPE', value: 'column' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'false' });
 			}
 		} else if (fun == '1') {
 			if (this.onSelect != 1) {
 				this.onSelect = 1;
 				storage.set({ key: 'EBOOK_SWIPE', value: 'row' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'false' });
+			}
+		} else if (fun == '4') {
+			if (this.onSelect != 4) {
+				this.onSelect = 4;
+				storage.set({ key: 'EBOOK_SWIPE', value: 'column' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'true' });
 			}
 		} else {
 			if (this.onSelect != 3) {
 				this.onSelect = 3;
 				storage.set({ key: 'EBOOK_SWIPE', value: 'off' });
+				storage.set({ key: 'EBOOK_SWIPE_SIDE_CLICK_ENABLED', value: 'false' });
 			}
 		}
-		this.updateScene();
 	},
 
 	routerTo(url) {
@@ -130,10 +149,6 @@ export default {
 
 	back() {
 		router.back();
-	},
-
-	updateScene() {
-		this.txtNum += 1;
 	}
 }
 </script>
