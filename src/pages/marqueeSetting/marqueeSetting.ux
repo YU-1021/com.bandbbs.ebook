@@ -79,7 +79,7 @@
 	  shelfMarqueeEnabled: false,
 	  bookmarkMarqueeEnabled: false,
 	  bookinfoMarqueeEnabled: true,
-	  chapterListMarqueeEnabled: false,
+	  chapterListItemMarqueeEnabled: false,
 	  chapterTitleMarqueeEnabled: false,
 	  textReaderMarqueeEnabled: false,
 	  detailMarqueeEnabled: false,
@@ -124,13 +124,6 @@
 		  this.bookinfoMarqueeEnabled = data === 'true'
 		},
 		default: 'true'
-	  });
-	  storage.get({
-		key: 'EBOOK_CHAPTER_LIST_MARQUEE_ENABLED',
-		success:(data)=>{
-		  this.chapterListMarqueeEnabled = data === 'true'
-		},
-		default: 'false'
 	  });
 	  storage.get({
 		key: 'EBOOK_CHAPTER_LIST_ITEM_MARQUEE_ENABLED',
