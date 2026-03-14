@@ -22,19 +22,19 @@
 			  </div>
 			  <img src="{{bookinfoMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:32px;height: 24px;"/>
 		  </list-item>
-		  <list-item class="item" @click="toggleChapterListMarquee" type="item">
+		  <list-item class="item" @click="toggleChapterListItemMarquee" type="item">
+			  <div class="item-content">
+				  <text class="itemtext" static>章节列表</text>
+				  <text class="itemtext2" static>章节标题滚动</text>
+			  </div>
+			  <img src="{{chapterListItemMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:32px;height: 24px;"/>
+		  </list-item>
+		  <list-item class="item" @click="toggleChapterTitleMarquee" type="item">
 			  <div class="item-content">
 				  <text class="itemtext" static>章节列表</text>
 				  <text class="itemtext2" static>页面标题滚动</text>
 			  </div>
-			  <img src="{{chapterListMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:32px;height: 24px;"/>
-		  </list-item>
-		  <list-item class="item" @click="toggleChapterListItemMarquee" type="item">
-			  <div class="item-content">
-				  <text class="itemtext" static>章节列表项</text>
-				  <text class="itemtext2" static>列表内容滚动</text>
-			  </div>
-			  <img src="{{chapterListItemMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:32px;height: 24px;"/>
+			  <img src="{{chapterTitleMarqueeEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:32px;height: 24px;"/>
 		  </list-item>
 		  <list-item class="item" @click="toggleTextReaderMarquee" type="item">
 			  <div class="item-content">
@@ -80,6 +80,7 @@
 	  bookinfoMarqueeEnabled: true,
 	  chapterListMarqueeEnabled: false,
 	  chapterListItemMarqueeEnabled: false,
+	  chapterTitleMarqueeEnabled: false,
 	  textReaderMarqueeEnabled: false,
 	  detailMarqueeEnabled: false,
 	  detailProgressMarqueeEnabled: false,
@@ -149,6 +150,13 @@
 		key: 'EBOOK_CHAPTER_LIST_ITEM_MARQUEE_ENABLED',
 		success:(data)=>{
 		  this.chapterListItemMarqueeEnabled = data === 'true'
+		},
+		default: 'false'
+	  });
+	  storage.get({
+		key: 'EBOOK_CHAPTER_TITLE_MARQUEE_ENABLED',
+		success:(data)=>{
+		  this.chapterTitleMarqueeEnabled = data === 'true'
 		},
 		default: 'false'
 	  });
