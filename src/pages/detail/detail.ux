@@ -1,7 +1,7 @@
 <template>
 	<div class="page">
-		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 480px; height: 480px; top: 0px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
-			<div id="contentContainer" style="position: absolute; width:480px; flex-direction: column; padding: 70px;">
+		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 340px; height: 340px; top: 70px; left: 70px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
+			<div id="contentContainer" style="position: absolute; width:340px; flex-direction: column;">
 				<div if="{{chapterSwitchStyle == 'button' && currentChapterIndexInAll > 0}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onPrevChapterClick">
 					<text static style="color: #aaa; font-size: 28px; font-weight: bold;">上一章</text>
 					<text if="{{chapterSwitchShowInfo && prevChapterName}}" style="color: #666; font-size: 20px; lines: 1; text-overflow: ellipsis; max-width: 80%;">{{prevChapterName}}</text>
@@ -9,10 +9,10 @@
 				
 				<div style="flex-direction: column; width: 100%; padding-bottom: 20px;">
 					<div if="{{chapterStartEmptyLines}}" style="height: 100px; width: 100%;"></div>
-					<text if="{{chapterStartNumber}}" style="width: 480px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 10px;">第 {{currentChapterIndexInAll + 1}} / {{totalChapters}} 章</text>
-					<text if="{{chapterStartName}}" style="width: 480px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 1.2}}px; font-weight: bold; margin-bottom: 20px;">{{currentChapterName}}</text>
-					<text if="{{chapterStartWordCount && page1 && page1.offset === 0}}" style="width: 480px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">本章 {{currentChapterWordCount}} 字</text>
-					<text if="{{chapterStartWordCount && (!page1 || page1.offset !== 0)}}" style="width: 480px; text-align: center; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">- 滑到顶部以加载上一段 -</text>
+					<text if="{{chapterStartNumber}}" style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 10px;">第 {{currentChapterIndexInAll + 1}} / {{totalChapters}} 章</text>
+					<text if="{{chapterStartName}}" style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 1.2}}px; font-weight: bold; margin-bottom: 20px;">{{currentChapterName}}</text>
+					<text if="{{chapterStartWordCount && page1 && page1.offset === 0}}" style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">本章 {{currentChapterWordCount}} 字</text>
+					<text if="{{chapterStartWordCount && (!page1 || page1.offset !== 0)}}" style="width: 340px; text-align: center; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">- 滑到顶部以加载上一段 -</text>
 				</div>
 				
 				<div id="page1" style="flex-direction: column; width: 100%; flex-shrink: 0;">
@@ -28,24 +28,23 @@
 				</div>
 			</div>
 		</scroll>
-
-		<div if="{{readMode === 'nostalgic'}}" id="nostalgicContainer" style="position: absolute; width: 480px; height: 480px; top: 0px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" onlongpress="onTxtLongPress">
-			<div id="nostalgicContent" style="position: absolute; width:480px; height: 480px; flex-direction: column; justify-content: flex-start; pointer-events: none; padding: 70px;">
-				<div id="nostalgicPage" style="flex-direction: column; width: 100%; height: 100%; pointer-events: none;">
-					<text style="width: 340px; height: 100%; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px; overflow: hidden; pointer-events: none;">{{ nostalgicPageText }}</text>
-				</div>
+		
+		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 340px; height: 340px; top: 70px; left: 70px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" onlongpress="onTxtLongPress">
+			<div id="nostalgicContainer" style="position: absolute; width: 340px; height: {{pageHeigh}}px; top: {{nostalgicTop}}px; overflow: hidden; pointer-events: none;">
+				<text id="box1" style="lines: -1; width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
+				<text id="box2" if="{{nostalgicPreViewShowFlag}}" style="lines: -1; width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopPreview}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicTextPre}}</text>
 			</div>
 		</div>
 
-		<div show="{{alwaysShowTime && (!isNearTopForHd) && !showSetting}}" style="position: absolute; left: 0px; top: 0px; width: 480px; height: 102px; justify-content: center; align-items: center; pointer-events: none;">
+		<div show="{{alwaysShowTime && ((readMode === 'nostalgic') || (!isNearTopForHd)) && !showSetting}}" style="position: absolute; left: 0px; top: 0px; width: 480px; height: 102px; justify-content: center; align-items: center; pointer-events: none;">
 			<img src="/common/images/hd.png" style="position: absolute; left: 0px; top: 0px; width: 480px; height: 102px;" />
 			<text style="color: rgba(255,255,255,0.6); font-size: 24px; font-weight: bold;">{{nowTime}}</text>
 		</div>
 	
 		<div show="{{showSetting && showDetails}}" style="position: absolute; width: 480px; height: 480px; pointer-events: none;" @click="toggleDetails">
-			<img src="/common/images/scale_c.png" style="position: absolute; width: 432px; left: 24px; bottom: 10px; height: 176px;" />
-			<text style="position: absolute; font-size: 34px; left: 125px; bottom: 104px; font-weight: bold; color: #ffffff; width: 120px; text-align: center;lines: 1;">{{batteryLevel}}%</text>
-			<text style="position: absolute; font-size: 34px; left: 295px; bottom: 104px; font-weight: bold; color: #ffffff; width: 120px; text-align: center;lines: 1;">{{displayProgress}}%</text>
+			<img src="/common/images/scale_c.png" style="position: absolute; width: 480px; bottom: 15px; height: 176px;" />
+			<text style="position: absolute; font-size: 34px; left: 122px; bottom: 114px; font-weight: bold; color: #ffffff; width: 120px; text-align: center;lines: 1;">{{batteryLevel}}%</text>
+			<text style="position: absolute; font-size: 34px; left: 292px; bottom: 114px; font-weight: bold; color: #ffffff; width: 120px; text-align: center;lines: 1;">{{displayProgress}}%</text>
 		</div>
 
 		<img show="{{showSetting}}" src="/common/images/more2.png" @click="gotoSetting()" class="header-more"/>
@@ -73,8 +72,8 @@ export default {
 		txtSizePage: 400,
 		fontSize: 30,
 		lineHeight: 34,
-		pageHeigh: 480,
-		scrollHeight: 480,
+		pageHeigh: 340,
+		scrollHeight: 340,
 		showSetting: true,
 		showDetails: false,
 		batteryLevel: '--',
@@ -132,11 +131,15 @@ export default {
 		lastTxtSizePage: 400,
 		lastFontSize: 30,
 		readMode: 'scroll',
-		nostalgicPageText: '',
-		nostalgicPageIndex: 0,
-		nostalgicFullContent: '',
-		nostalgicCharsPerPage: 0,
-		nostalgicTotalPages: 0,
+		nostalgicTop: 0,
+		nostalgicOffsetTopNormal: 0,
+		nostalgicOffsetTopPreview: 0,
+		nostalgicPreViewShowFlag: false,
+		nostalgicText: '',
+		nostalgicTextPre: '',
+		nostalgicBoxAllHeightNormal: 0,
+		nostalgicBoxAllHeightPreview: 0,
+		nostalgicSavedOffset: 0,
 		nostalgicPageTurnMode: 'topBottomClick',
 		boldEnabled: true,
 		chapterStartEmptyLines: false,
@@ -153,6 +156,7 @@ export default {
 		_shouldScrollToTop: false,
 		_fromBookmark: false,
 		_bookmarkOffsetInChapter: null,
+		_bookmarkScrollOffset: null,
 		_fromPercent: false,
 		_percentOffsetInChapter: null,
 		_percentTargetPercent: null,
@@ -283,12 +287,12 @@ export default {
 
 		this.lineHeight = parseInt((-0.01) * (this.fontSize ** 2) + 1.62 * this.fontSize - 3.23);
 		this.updateScrollHeight();
-		if (this.readMode === 'nostalgic') {
-			this.calculateNostalgicCharsPerPage();
-			if (this.nostalgicFullContent) {
-				this.calculateNostalgicTotalPages();
-				this.updateNostalgicPage();
-			}
+		
+		if (this.readMode === 'nostalgic' && this.nostalgicText) {
+			this.getNostalgicBoxHeight('box1', (h) => {
+				this.nostalgicBoxAllHeightNormal = h;
+				this.resetNostalgicPageOffset();
+			});
 		}
 	},
 
@@ -308,8 +312,9 @@ export default {
 	},
 
 	updateScrollHeight() { 
-		this.scrollHeight = 480; 
+		this.scrollHeight = 340; 
 		this.pageHeigh = Math.floor(this.scrollHeight / this.lineHeight) * this.lineHeight; 
+		this.nostalgicTop = this.verticalMargin + Math.floor((this.scrollHeight - this.pageHeigh) / 2);
 	},
 
 	toggleDetails() {
@@ -336,7 +341,12 @@ export default {
 		}
 		let prog = 0;
 		if (this.readMode === 'nostalgic') {
-			prog = (this.nostalgicTotalPages > 0) ? ((this.nostalgicPageIndex + 1) / this.nostalgicTotalPages) * 100 : 0;
+			if (this.allSize > 0) {
+				const READ_LEN = 2000;
+				let bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1);
+				let scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0);
+				prog = (scrolled / this.allSize) * 100;
+			}
 		} else {
 			if (this.allSize > 0) {
 				let totalScrolled = this.currentFileOffset;
@@ -348,100 +358,6 @@ export default {
 			}
 		}
 		this.displayProgress = Math.min(100, Math.max(0, prog)).toFixed(0);
-	},
-
-	calculateNostalgicCharsPerPage() {
-		if (this.scrollHeight <= 0 || this.lineHeight <= 0 || this.fontSize <= 0) { this.nostalgicCharsPerPage = 100; return; }
-		const linesPerPage = Math.floor(this.scrollHeight / this.lineHeight);
-		const charsPerLine = Math.floor(480 / this.fontSize);
-		if (linesPerPage <= 0 || charsPerLine <= 0) { this.nostalgicCharsPerPage = 100; return; }
-		this.nostalgicCharsPerPage = Math.min(10000, linesPerPage * charsPerLine);
-	},
-
-	getNostalgicPageStart(pageIndex) {
-		if (!this.nostalgicFullContent || this.nostalgicCharsPerPage <= 0 || pageIndex < 0) return 0;
-		const linesPerPage = Math.floor(this.scrollHeight / this.lineHeight);
-		const charsPerLine = Math.floor(480 / this.fontSize);
-		if (linesPerPage <= 0 || charsPerLine <= 0) return 0;
-
-		const contentLength = this.nostalgicFullContent.length;
-		let pos = 0;
-		let currentPage = 0;
-
-		if (pageIndex > 0) {
-			const startFromBeginning = pageIndex < 50;
-			if (!startFromBeginning) {
-				pos = Math.max(0, Math.min(pageIndex * this.nostalgicCharsPerPage, contentLength) - this.nostalgicCharsPerPage * 2);
-				currentPage = Math.floor(pos / this.nostalgicCharsPerPage);
-			}
-		}
-
-		while (pos < contentLength && currentPage < pageIndex) {
-			let pageStart = pos;
-			let currentLine = 0;
-			let currentLineChars = 0;
-			let lastNewlinePos = -1;
-			while (pos < contentLength && currentLine < linesPerPage) {
-				const char = this.nostalgicFullContent[pos];
-				if (char === '\n') {
-					lastNewlinePos = pos;
-					currentLine++;
-					currentLineChars = 0;
-				} else {
-					currentLineChars++;
-					if (currentLineChars >= charsPerLine) {
-						currentLine++;
-						currentLineChars = 0;
-					}
-				}
-				pos++;
-			}
-			if (this.preventParagraphSplitting && pos < contentLength && lastNewlinePos > pageStart) {
-				pos = lastNewlinePos + 1;
-			}
-			if (pos <= pageStart) pos = Math.min(pageStart + this.nostalgicCharsPerPage, contentLength);
-			currentPage++;
-		}
-		return Math.max(0, Math.min(pos, this.nostalgicFullContent.length));
-	},
-
-	calculateNostalgicTotalPages() {
-		if (!this.nostalgicFullContent || this.nostalgicCharsPerPage <= 0) { this.nostalgicTotalPages = 0; return; }
-		const linesPerPage = Math.floor(this.scrollHeight / this.lineHeight);
-		const charsPerLine = Math.floor(480 / this.fontSize);
-		if (linesPerPage <= 0 || charsPerLine <= 0) { this.nostalgicTotalPages = 1; return; }
-		
-		let totalPages = 0; 
-		let pos = 0; 
-		const contentLength = this.nostalgicFullContent.length;
-		
-		while (pos < contentLength) {
-			let currentLine = 0; 
-			let currentLineChars = 0; 
-			let pageStart = pos;
-			let lastNewlinePos = -1;
-			while (pos < contentLength && currentLine < linesPerPage) {
-				const char = this.nostalgicFullContent[pos];
-				if (char === '\n') {
-					lastNewlinePos = pos;
-					currentLine++;
-					currentLineChars = 0;
-				} else {
-					currentLineChars++;
-					if (currentLineChars >= charsPerLine) {
-						currentLine++;
-						currentLineChars = 0;
-					}
-				}
-				pos++;
-			}
-			if (this.preventParagraphSplitting && pos < contentLength && lastNewlinePos > pageStart) {
-				pos = lastNewlinePos + 1;
-			}
-			if (pos <= pageStart) pos = Math.min(pageStart + this.nostalgicCharsPerPage, contentLength);
-			totalPages++;
-		}
-		this.nostalgicTotalPages = totalPages > 0 ? totalPages : 1;
 	},
 
 	async loadBook() {
@@ -485,6 +401,7 @@ export default {
 			scrollOffset = progress.scrollOffset || 0;
 			this._fromBookmark = true;
 			this._bookmarkOffsetInChapter = offsetInChapter;
+			this._bookmarkScrollOffset = scrollOffset;
 			globalThis.justJumpedFromBookmark = false;
 			delete globalThis.justJumpedBookmarkChapterIndex;
 		} else if (progress.chapterIndex !== null) {
@@ -511,8 +428,8 @@ export default {
 		if (chapterToLoadIndex < 0 || chapterToLoadIndex >= this.totalChapters) chapterToLoadIndex = 0;
 		this.currentFileOffset = offsetInChapter;
 		this.savedScrollOffset = scrollOffset;
-		this.scrollTopValue = scrollOffset;
-		this.currentScrollTop = scrollOffset;
+		this.scrollTopValue = Math.max(0, scrollOffset);
+		this.currentScrollTop = Math.max(0, scrollOffset);
 		this._shouldScrollToTop = shouldScrollToTop;
 
 		this.loadChapter(chapterToLoadIndex, () => {
@@ -552,37 +469,7 @@ export default {
 			uri: this.cPath,
 			success: (data) => {
 				this.allSize = data.length;
-				if (this.readMode === 'nostalgic') {
-					file.readArrayBuffer({
-						uri: this.cPath,
-						success: (arrData) => {
-							try {
-								if (arrData.buffer && arrData.buffer.byteLength > 0) {
-									const buffer = new Uint8Array(arrData.buffer);
-									let str = "";
-									for (let i = 0; i < buffer.length; i += 2) str += String.fromCharCode(buffer[i + 1] * 256 + buffer[i]);
-									let prefix = "";
-									if (this.chapterStartEmptyLines) prefix += "\n\n\n";
-									if (this.chapterStartNumber) prefix += `第 ${this.currentChapterIndexInAll + 1} / ${this.totalChapters} 章\n`;
-									if (this.chapterStartName) prefix += `${this.currentChapterName}\n`;
-									if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`;
-									if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n";
-									this.nostalgicFullContent = prefix + str;
-								} else this.nostalgicFullContent = "";
-							} catch (e) {
-								this.nostalgicFullContent = "";
-							}
-							if (callback) callback();
-						},
-						fail: (d, code) => {
-							this.nostalgicFullContent = "";
-							if (code === 301) prompt.showToast({ message: '文件不存在，请重新同步该章节' });
-							if (callback) callback();
-						}
-					});
-				} else {
-					if (callback) callback();
-				}
+				if (callback) callback();
 			},
 			fail: (d, code) => {
 				this.allSize = 0;
@@ -644,14 +531,14 @@ export default {
 								const targetPercentOffset = Math.floor((this._percentTargetPercent / 100) * this.allSize);
 								if (targetPercentOffset >= p1Start && targetPercentOffset < p1End) {
 									const charsIn = (targetPercentOffset - p1Start) / 2;
-									const charsPerLine = Math.floor(432 / this.fontSize);
+									const charsPerLine = Math.floor(340 / this.fontSize);
 									const lines = charsPerLine > 0 ? Math.ceil(charsIn / charsPerLine) : 0;
 									restore(lines * this.lineHeight);
 								} else if (targetPercentOffset < p1Start) {
 									restore(0);
 								} else {
 									const charsBefore = targetPercentOffset / 2;
-									const charsPerLine = Math.floor(432 / this.fontSize);
+									const charsPerLine = Math.floor(340 / this.fontSize);
 									const lines = charsPerLine > 0 ? Math.ceil(charsBefore / charsPerLine) : 0;
 									const estimatedScroll = lines * this.lineHeight;
 									if (this.page2 && this.page2.offset <= targetPercentOffset) {
@@ -674,13 +561,19 @@ export default {
 								}
 							} else if (targetOffset >= p1Start && targetOffset < p1End) {
 								const charsIn = (targetOffset - p1Start) / 2;
-								const lines = Math.ceil(charsIn / Math.floor(480 / (this.fontSize * 0.6)));
-								restore((lines * this.lineHeight) + this.savedScrollOffset);
-							} else restore(this.savedScrollOffset);
+								const lines = Math.ceil(charsIn / Math.floor(340 / (this.fontSize * 0.6)));
+								restore((lines * this.lineHeight) + Math.max(0, this.savedScrollOffset));
+							} else if (targetOffset < p1Start) {
+								restore(Math.max(0, this.savedScrollOffset));
+							} else {
+								const charsBefore = targetOffset / 2;
+								const lines = Math.ceil(charsBefore / Math.floor(340 / (this.fontSize * 0.6)));
+								restore((lines * this.lineHeight) + Math.max(0, this.savedScrollOffset));
+							}
 						},
-						fail: () => restore(this.savedScrollOffset)
+						fail: () => restore(Math.max(0, this.savedScrollOffset))
 					});
-				} else restore(this.savedScrollOffset);
+				} else restore(Math.max(0, this.savedScrollOffset));
 			}
 		}, 100);
 	},
@@ -699,6 +592,7 @@ export default {
 				this._shouldScrollToTop = false;
 				this._fromBookmark = false;
 				this._bookmarkOffsetInChapter = null;
+				this._bookmarkScrollOffset = null;
 				this._fromPercent = false;
 				this._percentOffsetInChapter = null;
 				this._percentTargetPercent = null;
@@ -711,6 +605,7 @@ export default {
 				this._shouldScrollToTop = false;
 				this._fromBookmark = false;
 				this._bookmarkOffsetInChapter = null;
+				this._bookmarkScrollOffset = null;
 				this._fromPercent = false;
 				this._percentOffsetInChapter = null;
 				this._percentTargetPercent = null;
@@ -1019,12 +914,8 @@ export default {
 			let progress = await bookStorage.get(this.name);
 			progress.chapterIndex = this.currentChapterIndexInAll;
 			if (this.readMode === 'nostalgic') {
-				let charOffset = 0;
-				if (this.nostalgicPageIndex >= 0 && this.nostalgicTotalPages > 0 && this.nostalgicFullContent && this.nostalgicCharsPerPage > 0) {
-					charOffset = this.getNostalgicPageStart(this.nostalgicPageIndex);
-				}
-				progress.offsetInChapter = Math.max(0, charOffset * 2);
-				progress.scrollOffset = 0;
+				progress.offsetInChapter = Math.max(0, this.nostalgicSavedOffset || 0);
+				progress.scrollOffset = this.nostalgicOffsetTopNormal || 0;
 			} else {
 				progress.offsetInChapter = Math.max(0, Math.floor(this.currentFileOffset || 0));
 				progress.scrollOffset = Math.max(0, Math.floor(this.currentScrollTop || 0));
@@ -1061,8 +952,7 @@ export default {
 
 	async onBackPress() {
 		if (this.readMode === 'nostalgic' && this.nostalgicPageTurnMode === 'swipe' && this.nostalgicIsTouching) {
-			if (this.nostalgicPageIndex > 0) this.turnNostalgicPage(-1);
-			else if (this.currentChapterIndexInAll > 0) this.changeChapter(-1);
+			this.turnNostalgicPage(-1);
 			return true;
 		}
 		if (this.chapterSwitchStyle === 'swipe' && this.isTouching && this.currentChapterIndexInAll > 0) {
@@ -1132,80 +1022,235 @@ export default {
 	},
 
 	loadNostalgicChapter(offsetInChapter) {
-		if (!this.nostalgicFullContent) {
-			this.nostalgicPageText = "加载中...";
-			this.nostalgicPageIndex = 0;
-			this.nostalgicTotalPages = 0;
-			this.wait = false;
-			this.isChangingChapter = false;
-			return;
-		}
-		this.calculateNostalgicCharsPerPage();
-		this.calculateNostalgicTotalPages();
+		this.nostalgicOffsetTopNormal = 0;
+		this.nostalgicOffsetTopPreview = 0;
+		this.nostalgicPreViewShowFlag = false;
+		this.nostalgicBoxAllHeightNormal = 0;
+		this.nostalgicBoxAllHeightPreview = 0;
 
 		if (offsetInChapter === -1) {
-			this.nostalgicPageIndex = Math.max(0, this.nostalgicTotalPages - 1);
-		} else if (offsetInChapter > 0 && this.nostalgicFullContent.length > 0 && this.nostalgicCharsPerPage > 0) {
-			const charOffset = offsetInChapter / 2;
-			this.nostalgicPageIndex = Math.min(Math.floor(charOffset / this.nostalgicCharsPerPage), Math.max(0, this.nostalgicTotalPages - 1));
+			this.loadNostalgicEnd();
 		} else {
-			this.nostalgicPageIndex = 0;
-		}
-		this.updateNostalgicPage();
-		this.isAtChapterStart = this.nostalgicPageIndex === 0;
-		this.isAtChapterEnd = this.nostalgicPageIndex >= this.nostalgicTotalPages - 1;
-		this.isNearTopForHd = this.nostalgicPageIndex === 0;
-		this.wait = false;
-		this.isChangingChapter = false;
-	},
-
-	getNostalgicPageText(pageIndex) {
-		if (!this.nostalgicFullContent || this.nostalgicCharsPerPage <= 0 || pageIndex < 0 || pageIndex >= this.nostalgicTotalPages) return "";
-		const linesPerPage = Math.floor(this.scrollHeight / this.lineHeight);
-		const charsPerLine = Math.floor(480 / this.fontSize);
-		if (linesPerPage <= 0 || charsPerLine <= 0) return this.nostalgicFullContent;
-
-		const contentLength = this.nostalgicFullContent.length;
-		const pageStart = this.getNostalgicPageStart(pageIndex);
-		if (pageStart >= contentLength) return "";
-
-		let currentLine = 0;
-		let currentLineChars = 0;
-		let pageEnd = pageStart;
-		let lastNewlinePos = -1;
-
-		while (pageEnd < contentLength && currentLine < linesPerPage) {
-			const char = this.nostalgicFullContent[pageEnd];
-			if (char === '\n') {
-				lastNewlinePos = pageEnd;
-				currentLine++;
-				currentLineChars = 0;
+			if (this._fromBookmark && this._bookmarkOffsetInChapter !== null) {
+				this.nostalgicSavedOffset = this._bookmarkOffsetInChapter;
+				this.nostalgicOffsetTopNormal = this._bookmarkScrollOffset || 0;
+			} else if (this._fromPercent && this._percentTargetPercent !== null) {
+				this.nostalgicSavedOffset = Math.floor(this._percentTargetPercent / 100 * this.allSize);
+				this.nostalgicSavedOffset = this.nostalgicSavedOffset - (this.nostalgicSavedOffset % 2);
+				this.nostalgicOffsetTopNormal = 0;
 			} else {
-				currentLineChars++;
-				if (currentLineChars >= charsPerLine) {
-					currentLine++;
-					currentLineChars = 0;
+				this.nostalgicSavedOffset = this.currentFileOffset || 0;
+				if (!this._shouldScrollToTop && this.savedScrollOffset !== 0) {
+					this.nostalgicOffsetTopNormal = this.savedScrollOffset;
 				}
 			}
-			pageEnd++;
+			this.readNostalgicText(this.nostalgicSavedOffset, (str) => {
+				this.nostalgicText = str;
+				this.getNostalgicBoxHeight('box1', (h) => {
+					this.nostalgicBoxAllHeightNormal = h;
+					this.resetNostalgicPageOffset();
+					this.wait = false;
+					this.isChangingChapter = false;
+				});
+			});
 		}
-		if (this.preventParagraphSplitting && pageEnd < contentLength && lastNewlinePos > pageStart) {
-			pageEnd = lastNewlinePos + 1;
-		}
-		if (pageEnd <= pageStart) pageEnd = Math.min(pageStart + this.nostalgicCharsPerPage, contentLength);
-
-		return this.nostalgicFullContent.substring(pageStart, pageEnd);
 	},
 
-	updateNostalgicPage() {
-		if (!this.nostalgicFullContent || this.nostalgicTotalPages === 0) {
-			this.nostalgicPageText = "";
-			return;
+	loadNostalgicEnd() {
+		this.wait = true;
+		const READ_LEN = 2000;
+		let offset = Math.max(0, this.allSize - READ_LEN);
+		this.nostalgicSavedOffset = offset;
+		this.readNostalgicText(offset, (str) => {
+			this.nostalgicText = str;
+			this.getNostalgicBoxHeight('box1', (h) => {
+				this.nostalgicBoxAllHeightNormal = h;
+				this.nostalgicOffsetTopNormal = (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1;
+				this.resetNostalgicPageOffset();
+				this.wait = false;
+				this.isChangingChapter = false;
+			});
+		});
+	},
+
+	readNostalgicText(readOffset, cb) {
+		const READ_LEN = 2000;
+		let length = READ_LEN;
+		if (readOffset >= this.allSize) { cb(''); return; }
+		if (readOffset < 0) { length += readOffset; readOffset = 0; }
+		const maxLength = this.allSize - readOffset;
+		if (length > maxLength) length = maxLength;
+
+		file.readArrayBuffer({
+			uri: this.cPath, position: readOffset, length: length,
+			success: (data) => {
+				if (!data.buffer || data.buffer.byteLength === 0) { cb(''); return; }
+				try {
+					const buffer = new Uint8Array(data.buffer);
+					let str = "";
+					for (let i = 0; i < buffer.length; i += 2) {
+						str += String.fromCharCode(buffer[i + 1] * 256 + buffer[i]);
+					}
+					let prefix = "";
+					if (readOffset === 0) {
+						if (this.chapterStartEmptyLines) prefix += "\n\n\n";
+						if (this.chapterStartNumber) prefix += `第 ${this.currentChapterIndexInAll + 1} / ${this.totalChapters} 章\n`;
+						if (this.chapterStartName) prefix += `${this.currentChapterName}\n`;
+						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`;
+						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n";
+					}
+					cb(prefix + str);
+				} catch (e) { cb(''); }
+			},
+			fail: () => { cb(''); }
+		});
+	},
+
+	getNostalgicBoxHeight(id, cb, secondFlag = false) {
+		setTimeout(() => {
+			this.$element(id).getBoundingClientRect({
+				success: (data) => {
+					const height = data.height || 0;
+					if (height === 0 && !secondFlag) {
+						this.getNostalgicBoxHeight(id, cb, true);
+						return;
+					}
+					const height2 = Math.round(height / this.lineHeight) * this.lineHeight;
+					cb(height2);
+				},
+				fail: () => { cb(this.pageHeigh); }
+			});
+		}, 150);
+	},
+
+	resetNostalgicPageOffset() {
+		let showPre = false;
+		const READ_LEN = 2000;
+		if (this.nostalgicOffsetTopNormal > 0) {
+			if (this.nostalgicOffsetTopNormal >= this.pageHeigh) {
+				if (this.nostalgicBoxAllHeightPreview > 0 && this.nostalgicPreViewShowFlag) {
+					this.nostalgicOffsetTopNormal = this.nostalgicOffsetTopPreview + this.pageHeigh;
+					this.nostalgicPreViewShowFlag = false;
+					this.nostalgicText = this.nostalgicTextPre;
+					this.nostalgicSavedOffset = this.nostalgicSavedOffset - READ_LEN;
+					if (this.nostalgicSavedOffset <= 0 && this.nostalgicOffsetTopNormal > 0) {
+						this.nostalgicOffsetTopNormal = 0;
+						this.nostalgicSavedOffset = 0;
+						this.isAtChapterStart = true;
+					}
+				} else if (this.nostalgicSavedOffset > 0) {
+					this.wait = true;
+					let offset = Math.max(0, this.nostalgicSavedOffset - READ_LEN);
+					this.readNostalgicText(offset, (str) => {
+						this.nostalgicText = str;
+						this.nostalgicSavedOffset = offset;
+						this.getNostalgicBoxHeight('box1', (h) => {
+							this.nostalgicBoxAllHeightNormal = h;
+							this.nostalgicOffsetTopNormal = (this.nostalgicBoxAllHeightNormal * -1) + this.nostalgicOffsetTopNormal;
+							if (offset <= 0 && this.nostalgicOffsetTopNormal > 0) {
+								this.nostalgicOffsetTopNormal = 0;
+								this.nostalgicSavedOffset = 0;
+								this.isAtChapterStart = true;
+							} else {
+								this.isAtChapterStart = false;
+							}
+							this.wait = false;
+							this.updateNostalgicProgress();
+						});
+					});
+					return;
+				} else {
+					this.nostalgicOffsetTopNormal -= this.pageHeigh;
+					if (this.currentChapterIndexInAll > 0) {
+						this.changeChapter(-1);
+					} else {
+						prompt.showToast({ message: '已是第一章' });
+					}
+					return;
+				}
+			} else {
+				if (this.nostalgicSavedOffset > 0) {
+					let offset = Math.max(0, this.nostalgicSavedOffset - READ_LEN);
+					showPre = true;
+					this.nostalgicPreViewShowFlag = false;
+					this.readNostalgicText(offset, (str) => {
+						this.nostalgicTextPre = str;
+						this.nostalgicPreViewShowFlag = true;
+						this.getNostalgicBoxHeight('box2', (h) => {
+							this.nostalgicBoxAllHeightPreview = h;
+							if (this.nostalgicBoxAllHeightPreview > 0) {
+								this.nostalgicOffsetTopPreview = (this.nostalgicBoxAllHeightPreview * -1) + this.nostalgicOffsetTopNormal;
+							} else {
+								this.nostalgicOffsetTopPreview = 0;
+							}
+						});
+					});
+				} else {
+					this.nostalgicOffsetTopNormal = 0;
+					this.isAtChapterStart = true;
+				}
+			}
+		} else {
+			let preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
+			if (preOffset >= 0 && preOffset < this.pageHeigh) {
+				if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
+					this.nostalgicOffsetTopNormal = (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1;
+					this.isAtChapterEnd = true;
+				} else {
+					this.nostalgicOffsetTopPreview = preOffset;
+					let offset = this.nostalgicSavedOffset + READ_LEN;
+					showPre = true;
+					this.nostalgicPreViewShowFlag = false;
+					this.readNostalgicText(offset, (str) => {
+						this.nostalgicTextPre = str;
+						this.nostalgicPreViewShowFlag = true;
+						this.getNostalgicBoxHeight('box2', (h) => {
+							this.nostalgicBoxAllHeightPreview = h;
+						});
+					});
+				}
+			} else if (preOffset < 0) {
+				if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
+					this.nostalgicOffsetTopNormal -= preOffset;
+					if (this.currentChapterIndexInAll < this.totalChapters - 1) {
+						this.changeChapter(1);
+					} else {
+						prompt.showToast({ message: '已是最后一章' });
+						this.isAtChapterEnd = true;
+					}
+					return;
+				} else {
+					this.nostalgicOffsetTopNormal = preOffset;
+					this.nostalgicPreViewShowFlag = false;
+					this.nostalgicText = this.nostalgicTextPre;
+					this.nostalgicSavedOffset = this.nostalgicSavedOffset + READ_LEN;
+					this.nostalgicBoxAllHeightNormal = this.nostalgicBoxAllHeightPreview;
+					this.isAtChapterStart = false;
+				}
+			}
 		}
-		this.nostalgicPageIndex = Math.max(0, Math.min(this.nostalgicPageIndex, this.nostalgicTotalPages - 1));
-		this.nostalgicPageText = this.getNostalgicPageText(this.nostalgicPageIndex);
-		this.isAtChapterStart = this.nostalgicPageIndex === 0;
-		this.isAtChapterEnd = this.nostalgicPageIndex >= this.nostalgicTotalPages - 1;
+
+		if (!showPre) {
+			this.nostalgicPreViewShowFlag = false;
+		}
+		
+		this.updateNostalgicProgress();
+	},
+
+	updateNostalgicProgress() {
+		const READ_LEN = 2000;
+		this.isAtChapterStart = (this.nostalgicSavedOffset === 0 && this.nostalgicOffsetTopNormal >= 0);
+		let preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
+		this.isAtChapterEnd = (this.nostalgicSavedOffset + READ_LEN >= this.allSize && preOffset <= 0);
+		this.isNearTopForHd = this.isAtChapterStart;
+		
+		if (this.allSize > 0) {
+			let bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1);
+			let scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0);
+			this.displayProgress = Math.min(100, Math.max(0, (scrolled / this.allSize) * 100));
+		} else {
+			this.displayProgress = 0;
+		}
 		this.saveData(true);
 	},
 
@@ -1232,26 +1277,19 @@ export default {
 			const deltaX = this.nostalgicTouchEndX - this.nostalgicTouchStartX;
 			if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(this.nostalgicTouchEndY - this.nostalgicTouchStartY)) {
 				if (deltaX < 0) this.turnNostalgicPage(1);
+				else this.turnNostalgicPage(-1);
 			}
 		}
 	},
 
 	turnNostalgicPage(direction) {
+		if (this.wait) return;
 		if (direction > 0) {
-			if (this.nostalgicPageIndex < this.nostalgicTotalPages - 1) {
-				this.nostalgicPageIndex++;
-				this.updateNostalgicPage();
-			} else {
-				this.isAtChapterEnd = true;
-				if (this.currentChapterIndexInAll < this.totalChapters - 1) this.changeChapter(1);
-			}
+			this.nostalgicOffsetTopNormal -= this.pageHeigh;
+			this.resetNostalgicPageOffset();
 		} else {
-			if (this.nostalgicPageIndex > 0) {
-				this.nostalgicPageIndex--;
-				this.updateNostalgicPage();
-			} else if (this.currentChapterIndexInAll > 0) {
-				this.changeChapter(-1);
-			}
+			this.nostalgicOffsetTopNormal += this.pageHeigh;
+			this.resetNostalgicPageOffset();
 		}
 	},
 
@@ -1269,7 +1307,7 @@ export default {
 			} else {
 				const isTopBottom = this.nostalgicPageTurnMode === 'topBottomClick';
 				const clickPos = isTopBottom ? (evt.offsetY || (evt.detail && evt.detail.y) || 0) : (evt.offsetX || (evt.detail && evt.detail.x) || 0);
-				const dim = isTopBottom ? this.scrollHeight : 480;
+				const dim = 480;
 				if (clickPos < dim / 3) this.turnNostalgicPage(-1);
 				else if (clickPos > dim * 2 / 3) this.turnNostalgicPage(1);
 				else {
@@ -1351,7 +1389,53 @@ export default {
 	},
 
 	lastPage() { this.$element("scrollId").scrollBy({ top: -(this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }); },
-	nextPage() { this.$element("scrollId").scrollBy({ top: (this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }); }
+	nextPage() { this.$element("scrollId").scrollBy({ top: (this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }); },
+
+	toggleKeepScreenOn() {
+		this.isKeepScreenOn = !this.isKeepScreenOn;
+		brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
+		prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' });
+	},
+
+	async addBookmark() {
+		if (this.isProcessingClick) return;
+		this.isProcessingClick = true;
+		if (this.longPressTriggered) { this.isProcessingClick = false; return; }
+
+		let bookmarks = await bookStorage.getBookmarks(this.name) || [];
+		const chapter = await chapterManager.getChapterByIndex(this.name, this.currentChapterIndexInAll);
+		if (!chapter || chapter.index === undefined) {
+			prompt.showToast({ message: '无法添加书签，章节信息错误' });
+			this.isProcessingClick = false;
+			return;
+		}
+
+		bookmarks.push({
+			chapterIndex: chapter.index,
+			chapterName: this.currentChapterName,
+			offsetInChapter: this.readMode === 'nostalgic' ? this.nostalgicSavedOffset : Math.max(0, Math.floor(this.currentFileOffset || 0)),
+			scrollOffset: this.readMode === 'nostalgic' ? this.nostalgicOffsetTopNormal : Math.max(0, Math.floor(this.currentScrollTop || 0)),
+			time: new Date().getTime(),
+			name: `书签${bookmarks.length + 1}`
+		});
+		bookmarks.sort((a, b) => a.chapterIndex - b.chapterIndex || a.offsetInChapter - b.offsetInChapter);
+		try {
+			await bookStorage.setBookmarks(this.name, bookmarks);
+			prompt.showToast({ message: '添加书签成功' });
+		} catch (e) { prompt.showToast({ message: '添加书签失败' }); }
+		this.isProcessingClick = false;
+	},
+
+	gotoBookmarks() {
+		if (this.isProcessingClick) return;
+		this.isProcessingClick = true;
+		this.longPressTriggered = true;
+		if (this.longPressTimeout) clearTimeout(this.longPressTimeout);
+		this.longPressTimeout = setTimeout(() => { this.longPressTriggered = false; this.longPressTimeout = null; }, 300);
+		this.saveData(true);
+		router.push({ uri: '/pages/bookmarks', params: { name: this.name } });
+		setTimeout(() => { this.isProcessingClick = false; }, 500);
+	}
 }
 </script>
 
