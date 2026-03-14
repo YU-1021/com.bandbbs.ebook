@@ -4,14 +4,14 @@
             <list-item class="item" @click="routerTo('pageSizeSetting')" type="item">
                 <div class="item-content">
                     <text class="itemtext" static>分段大小</text>
-                    <text class="itemtext2" static>翻页加载的文本量</text>
+                    <text class="itemtext2" static>一次性加载的字节</text>
                 </div>
                 <img src="/common/images/enter.png" class="arrow" static/>
             </list-item>
-            <list-item class="item" @click="togglePreventParagraphSplitting" type="item">
+            <list-item class="item" @click="togglePreventParagraphSplitting" type="item" if="{{readMode !== 'nostalgic'}}">
                 <div class="item-content">
                     <text class="itemtext" static>段落防分割</text>
-                    <text class="itemtext2" static>避免段落被截断</text>
+                    <text class="itemtext2" static>避免分段截断段落</text>
                 </div>
                 <img src="{{preventParagraphSplitting ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch"/>
             </list-item>
@@ -62,7 +62,8 @@
             timer: null,
             timeFormat: '24h',
             preventParagraphSplitting: false,
-            readingTimeRecording: true
+            readingTimeRecording: true,
+            readMode: 'scroll'
         },
         
         onInit() {
@@ -102,6 +103,13 @@
                 },
                 fail: () => {
                     this.readingTimeRecording = true;
+                }
+            });
+
+            storage.get({
+                key: 'EBOOK_READ_MODE',
+                success: (data) => {
+                    if (data) this.readMode = data;
                 }
             });
         },
