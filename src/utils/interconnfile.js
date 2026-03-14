@@ -65,14 +65,14 @@ export default class interconnfile {
                     case "update_book_info":
                         await this.updateBookInfo(payload);
                         break;
-                    case "get_reading_data":
-                        await this.getReadingData(payload);
-                        break;
                     case "set_reading_data":
                         await this.setReadingData(payload);
                         break;
                     case "set_batch_reading_data":
                         await this.setBatchReadingData(payload);
+                        break;
+                    case "get_all_reading_data":
+                        await this.pushAllReadingData();
                         break;
                     case "delete_chapters":
                         await this.deleteChapters(payload);
@@ -88,9 +88,6 @@ export default class interconnfile {
                         break;
                     case "set_settings":
                         await this.setSettings(payload);
-                        break;
-                    case "get_bookmarks":
-                        await this.getBookmarks(payload);
                         break;
                     case "set_bookmarks":
                         await this.setBookmarks(payload);
@@ -733,7 +730,7 @@ export default class interconnfile {
         }
     }
 
-    async getReadingData({ filename }) {
+    async pushReadingData(filename) {
         try {
             const sanitizedDirName = this.generateDirName(filename);
             let progress = null;
@@ -750,16 +747,60 @@ export default class interconnfile {
                 if (readingTimeData) readingTime = JSON.stringify(readingTimeData);
             } catch (e) {}
             
-            this.send({ type: "reading_data", progress, readingTime });
+            this.send({ type: "sync_reading_data", filename, progress, readingTime });
         } catch (error) {
-            this.send({ type: "reading_data", progress: null, readingTime: null });
+            this.send({ type: "error", message: `同步阅读数据失败: ${error.message}`, count: 0 });
+        }
+    }
+
+    async pushAllReadingData() {
+        try {
+            const allBooks = await bookStorage.getBooks();
+            const allReadingTime = await readingTimeStorage.getAllBooksReadingTime();
+            
+            const booksData = [];
+            for (const book of allBooks) {
+                const filename = book.name;
+                const sanitizedDirName = book.dirName;
+                
+                let progress = null;
+                let readingTime = null;
+                
+                if (book.progress) {
+                    progress = JSON.stringify(book.progress);
+                }
+                
+                let rtData = allReadingTime[sanitizedDirName] || allReadingTime[filename];
+                if (rtData) {
+                    readingTime = JSON.stringify(rtData);
+                }
+                
+                if (progress || readingTime) {
+                    booksData.push({ filename, progress, readingTime });
+                }
+            }
+            
+            this.send({ type: "sync_batch_reading_data", books: booksData });
+        } catch (error) {
+            this.send({ type: "error", message: `批量同步阅读数据失败: ${error.message}`, count: 0 });
         }
     }
 
     async setReadingData({ filename, progress, readingTime }) {
         try {
+            if (!filename || !filename.trim()) {
+                this.send({ type: "error", message: "无效的文件名", count: 0 });
+                return;
+            }
             const sanitizedDirName = this.generateDirName(filename);
-            
+            const bookshelf = await bookStorage.getBooks();
+            const hasBook = bookshelf.some(b => b.dirName === sanitizedDirName || b.name === filename);
+            if (!hasBook) {
+                console.warn(`[interconn] reading data sync ignored: book not found: ${filename}`);
+                this.send({ type: "error", message: "书籍不存在", count: 0 });
+                return;
+            }
+
             if (progress) {
                 try {
                     const progressData = JSON.parse(progress);
@@ -949,7 +990,7 @@ export default class interconnfile {
         }
     }
 
-    async getBookmarks({ filename }) {
+    async pushBookmarks(filename) {
         try {
             const sanitizedDirName = this.generateDirName(filename);
             const bookmarks = await bookStorage.getBookmarks(sanitizedDirName);
@@ -963,9 +1004,9 @@ export default class interconnfile {
                 time: bm.time || Date.now()
             }));
             
-            this.send({ type: "bookmarks_data", bookmarks: bookmarkData });
+            this.send({ type: "sync_bookmarks", filename, bookmarks: bookmarkData });
         } catch (error) {
-            this.send({ type: "bookmarks_data", bookmarks: [] });
+            this.send({ type: "error", message: `同步书签失败: ${error.message}`, count: 0 });
         }
     }
 
@@ -993,5 +1034,5 @@ export default class interconnfile {
         this.callback = callback;
     }
     
-    callback(msg) {}
+    callback() {}
 }
