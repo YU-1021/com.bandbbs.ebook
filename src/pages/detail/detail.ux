@@ -1,13 +1,7 @@
 <template>
 	<div class="page">
-<<<<<<< HEAD
-		<div if="{{swipe === 'column' && swipeSideClickEnabled}}" style="position: absolute; width: 336px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
 		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 336px; height: {{scrollHeight}}px; top: {{verticalMargin}}px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
 			<div id="contentContainer" style="position: absolute; width:336px; flex-direction: column;">
-=======
-		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 432px; height: {{scrollHeight}}px; top: {{verticalMargin}}px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
-			<div id="contentContainer" style="position: absolute; width:432px; flex-direction: column;">
->>>>>>> 3f48103 (章节列表跑马灯)
 				<div if="{{chapterSwitchStyle == 'button' && currentChapterIndexInAll > 0}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onPrevChapterClick">
 					<text static style="color: #aaa; font-size: 28px; font-weight: bold;">上一章</text>
 					<text if="{{chapterSwitchShowInfo && prevChapterName}}" style="color: #666; font-size: 20px; lines: 1; text-overflow: ellipsis; max-width: 80%;">{{prevChapterName}}</text>
@@ -33,13 +27,11 @@
 		</scroll>
 		
 		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 336px; height: 480px; top: 0px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" onlongpress="onTxtLongPress">
-			<div if="{{nostalgicPageTurnMode === 'swipe' && swipeSideClickEnabled}}" style="position: absolute; width: 336px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
 			<div id="nostalgicContainer" style="position: absolute; width: 336px; height: {{pageHeigh}}px; top: {{nostalgicTop}}px; overflow: hidden; pointer-events: none;">
 				<text id="box1" style="lines: -1; width: 336px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
 				<text id="box2" if="{{nostalgicPreViewShowFlag}}" style="lines: -1; width: 336px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopPreview}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicTextPre}}</text>
 			</div>
 		</div>
-<<<<<<< HEAD
 
 		<img show="{{showSetting || (alwaysShowTime && !isNearTopForHd)}}" src="/common/images/hd.png" style="position: absolute;left: 0px;top: 0px;width: 336px;height: 102px;" />
 		<img show="{{showSetting}}" src="/common/images/back.png" @click="back" style="position: absolute;left: 6px;top: 6px;width: 72px;height: 72px;" />
@@ -47,20 +39,7 @@
 		<text show="{{showSetting || (alwaysShowTime && !isNearTopForHd)}}" style="position: absolute;left: 78px;top: 7px;width: 180px;line-height: 32px;font-weight:bold;font-size:24px;color:rgba(255,255,255,0.6);text-align:center;">{{nowTime}}</text>
 		<marquee if="{{textReaderMarqueeEnabled}}" scrollamount="50" show="{{showSetting}}" style="position: absolute;left: 78px;top: 35px;width: 180px;line-height: 42px;font-weight:bold;font-size:32px;color:white;text-align:center;">{{currentChapterName}}</marquee>
 		<text else show="{{showSetting}}" style="position: absolute;left: 78px;top: 35px;width: 180px;line-height: 42px;font-weight:bold;font-size:32px;color:white;text-align:center;lines: 1;">{{currentChapterName}}</text>
-=======
 		
-		<div if="{{swipe === 'column' && swipeSideClickEnabled}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
-		
-		<img show="{{showSetting || (alwaysShowTime && !isNearTopForHd)}}" src="/common/images/hd.png" style="position: absolute;left: 0px;top: 0px;width: 432px;height: 122px;" />
-		<img show="{{showSetting}}" src="/common/images/back.png" @click="back" style="position: absolute;left: 38px;top: 24px;width: 82px;height: 82px;" />
-		<img show="{{showSetting}}" src="/common/images/more.png" @click="gotoSetting" style="position: absolute;left: 322px;top: 24px;width: 82px;height: 82px;" />
-		<div show="{{showSetting || (alwaysShowTime && !isNearTopForHd)}}" style="position: absolute; left: 130px; top: 8px; width: 172px; flex-direction: column; align-items: center;">
-			<text if="{{showSetting || (alwaysShowBattery && alwaysShowTime && !isNearTopForHd)}}" style="line-height: 24px; font-weight: bold; font-size: 20px; color: rgba(255,255,255,0.6); text-align: center;">{{batteryLevel}}</text>
-			<text style="line-height: 28px; font-weight: bold; font-size: 24px; color: rgba(255,255,255,0.6); text-align: center;">{{nowTime}}</text>
-		</div>
-		<marquee if="{{textReaderMarqueeEnabled}}" scrollamount="50" text-offset="25" show="{{showSetting}}" style="position: absolute;left: 130px;top: 58px;width: 172px;line-height: 42px;font-weight:bold;font-size:32px;color:white;text-align:center;">{{currentChapterName}}</marquee>
-		<text else show="{{showSetting}}" style="position: absolute;left: 130px;top: 58px;width: 172px;line-height: 42px;font-weight:bold;font-size:32px;color:white;text-align:center;lines: 1;">{{currentChapterName}}</text>
->>>>>>> 3f48103 (章节列表跑马灯)
 		<text if="{{showProgressBar && showProgressBarPercent}}" class="progress-bar-percent" style="bottom: {{progressBarHeight + 1}}px;">{{Math.round(displayProgress)}}%</text>
 		<img show="{{showSetting}}" src="/common/images/bt.png" style="position: absolute;left: 0px;top: 378px;width: 336px;height: 102px;" />
 		<img show="{{showSetting}}" src="{{ isKeepScreenOn ? '/common/images/brightness.png' : '/common/images/brightness_off.png' }}" @click="toggleKeepScreenOn" style="position: absolute;left: 6px;top: 402px;width: 72px;height: 72px;" />
@@ -1433,11 +1412,24 @@ export default {
 				this.showSetting = !this.showSetting;
 				return;
 			}
+            
+            const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
+
 			if (this.nostalgicPageTurnMode === 'swipe') {
-				this.showSetting = !this.showSetting;
+                if (this.swipeSideClickEnabled) {
+                    if (clickX < 336 / 3) {
+                        this.turnNostalgicPage(-1);
+                    } else if (clickX > 336 * 2 / 3) {
+                        this.turnNostalgicPage(1);
+                    } else {
+                        this.showSetting = !this.showSetting;
+                    }
+                } else {
+                    this.showSetting = !this.showSetting;
+                }
 			} else {
 				const isTopBottom = this.nostalgicPageTurnMode === 'topBottomClick';
-				const clickPos = isTopBottom ? (evt.offsetY || (evt.detail && evt.detail.y) || 0) : (evt.offsetX || (evt.detail && evt.detail.x) || 0);
+				const clickPos = isTopBottom ? (evt.offsetY || (evt.detail && evt.detail.y) || 0) : clickX;
 				const dim = isTopBottom ? 480 : 336;
 				if (clickPos < dim / 3) this.turnNostalgicPage(-1);
 				else if (clickPos > dim * 2 / 3) this.turnNostalgicPage(1);
@@ -1453,8 +1445,23 @@ export default {
 				this.showSetting = !this.showSetting;
 				return;
 			}
+            
+            const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
+
 			if (this.swipe === 'column') {
-				this.showSetting = !this.showSetting;
+                if (this.swipeSideClickEnabled) {
+                    if (clickX < 336 / 3) {
+                        if (this.isAtChapterStart) this.changeChapter(-1);
+                        else this.lastPage();
+                    } else if (clickX > 336 * 2 / 3) {
+                        if (this.isAtChapterEnd) this.changeChapter(1);
+                        else this.nextPage();
+                    } else {
+                        this.showSetting = !this.showSetting;
+                    }
+                } else {
+				    this.showSetting = !this.showSetting;
+                }
 			} else {
 				if (this.showSetting) this.showSetting = false;
 				else if (evt.offsetY <= 158) this.lastPage();
@@ -1491,18 +1498,6 @@ export default {
 		} else {
 			if (this.showSetting) this.showSetting = false;
 			else actionCallback(event);
-		}
-	},
-
-	onScrollSideClick(event) {
-		if (this.showSetting) this.showSetting = false;
-		const clickX = (event && event.offsetX) || (event && event.detail && event.detail.x) || 0;
-		if (clickX < 336 / 3) {
-			if (this.isAtChapterStart) this.changeChapter(-1);
-			else this.lastPage();
-		} else if (clickX > 336 * 2 / 3) {
-			if (this.isAtChapterEnd) this.changeChapter(1);
-			else this.nextPage();
 		}
 	},
 
