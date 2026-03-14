@@ -185,19 +185,18 @@
 	  this.bookinfoMarqueeEnabled = !this.bookinfoMarqueeEnabled;
 	  storage.set({ key: 'EBOOK_BOOKINFO_MARQUEE_ENABLED', value: this.bookinfoMarqueeEnabled.toString() });
 	},
-  
-	toggleChapterListMarquee() {
-	  this.chapterListMarqueeEnabled = !this.chapterListMarqueeEnabled;
-	  storage.set({
-		  key: 'EBOOK_CHAPTER_LIST_MARQUEE_ENABLED',
-		  value: this.chapterListMarqueeEnabled.toString()
-	  });
-	},
 	toggleChapterListItemMarquee() {
 	  this.chapterListItemMarqueeEnabled = !this.chapterListItemMarqueeEnabled;
 	  storage.set({
 		  key: 'EBOOK_CHAPTER_LIST_ITEM_MARQUEE_ENABLED',
 		  value: this.chapterListItemMarqueeEnabled.toString()
+	  });
+	},
+	toggleChapterTitleMarquee() {
+	  this.chapterTitleMarqueeEnabled = !this.chapterTitleMarqueeEnabled;
+	  storage.set({
+		  key: 'EBOOK_CHAPTER_TITLE_MARQUEE_ENABLED',
+		  value: this.chapterTitleMarqueeEnabled.toString()
 	  });
 	},
   
