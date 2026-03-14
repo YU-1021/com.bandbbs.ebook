@@ -15,9 +15,10 @@
           参与开发的人员
         </text>
       </list-item>
-      <list-item type="content" class="item center" style="width: 416px;height: 248px;flex-direction: column;">
+      <list-item type="content" class="item center" style="width: 416px;height: 278px;flex-direction: column;">
         <text style="font-size: 38px;font-weight:bold;">@爅峫moye</text>
         <text style="font-size: 38px;font-weight:bold;top: 5px;">@乐色桶</text>
+        <text style="font-size: 38px;font-weight:bold;top: 5px;">@GiveMeFive</text>
         <text style="font-size: 38px;font-weight:bold;top: 5px;">@NEORUAA</text>
         <text style="font-size: 38px;font-weight:bold;top: 5px;">@无源流沙</text>
       </list-item>
