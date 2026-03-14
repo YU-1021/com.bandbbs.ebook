@@ -27,14 +27,11 @@
 		</scroll>
 		
 		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" onlongpress="onTxtLongPress">
-			<div if="{{nostalgicPageTurnMode === 'swipe' && swipeSideClickEnabled}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
 			<div id="nostalgicContainer" style="position: absolute; width: 432px; height: {{pageHeigh}}px; top: {{nostalgicTop}}px; overflow: hidden; pointer-events: none;">
 				<text id="box1" style="lines: -1; width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
 				<text id="box2" if="{{nostalgicPreViewShowFlag}}" style="lines: -1; width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopPreview}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicTextPre}}</text>
 			</div>
 		</div>
-		
-		<div if="{{swipe === 'column' && swipeSideClickEnabled}}" style="position: absolute; width: 432px; height: 514px; top: 0px;" @click="onScrollSideClick"></div>
 		
 		<img show="{{showSetting || (alwaysShowTime && !isNearTopForHd)}}" src="/common/images/hd.png" style="position: absolute;left: 0px;top: 0px;width: 432px;height: 122px;" />
 		<img show="{{showSetting}}" src="/common/images/back.png" @click="back" style="position: absolute;left: 38px;top: 24px;width: 82px;height: 82px;" />
@@ -1344,11 +1341,24 @@ export default {
 				this.showSetting = !this.showSetting;
 				return;
 			}
+            
+            const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
+
 			if (this.nostalgicPageTurnMode === 'swipe') {
-				this.showSetting = !this.showSetting;
+                if (this.swipeSideClickEnabled) {
+                    if (clickX < 432 / 3) {
+                        this.turnNostalgicPage(-1);
+                    } else if (clickX > 432 * 2 / 3) {
+                        this.turnNostalgicPage(1);
+                    } else {
+                        this.showSetting = !this.showSetting;
+                    }
+                } else {
+                    this.showSetting = !this.showSetting;
+                }
 			} else {
 				const isTopBottom = this.nostalgicPageTurnMode === 'topBottomClick';
-				const clickPos = isTopBottom ? (evt.offsetY || (evt.detail && evt.detail.y) || 0) : (evt.offsetX || (evt.detail && evt.detail.x) || 0);
+				const clickPos = isTopBottom ? (evt.offsetY || (evt.detail && evt.detail.y) || 0) : clickX;
 				const dim = isTopBottom ? 514 : 432;
 				if (clickPos < dim / 3) this.turnNostalgicPage(-1);
 				else if (clickPos > dim * 2 / 3) this.turnNostalgicPage(1);
@@ -1364,8 +1374,23 @@ export default {
 				this.showSetting = !this.showSetting;
 				return;
 			}
+            
+            const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
+
 			if (this.swipe === 'column') {
-				this.showSetting = !this.showSetting;
+                if (this.swipeSideClickEnabled) {
+                    if (clickX < 432 / 3) {
+                        if (this.isAtChapterStart) this.changeChapter(-1);
+                        else this.lastPage();
+                    } else if (clickX > 432 * 2 / 3) {
+                        if (this.isAtChapterEnd) this.changeChapter(1);
+                        else this.nextPage();
+                    } else {
+                        this.showSetting = !this.showSetting;
+                    }
+                } else {
+				    this.showSetting = !this.showSetting;
+                }
 			} else {
 				if (this.showSetting) this.showSetting = false;
 				else if (evt.offsetY <= 158) this.lastPage();
@@ -1402,18 +1427,6 @@ export default {
 		} else {
 			if (this.showSetting) this.showSetting = false;
 			else actionCallback(event);
-		}
-	},
-
-	onScrollSideClick(event) {
-		if (this.showSetting) this.showSetting = false;
-		const clickX = (event && event.offsetX) || (event && event.detail && event.detail.x) || 0;
-		if (clickX < 432 / 3) {
-			if (this.isAtChapterStart) this.changeChapter(-1);
-			else this.lastPage();
-		} else if (clickX > 432 * 2 / 3) {
-			if (this.isAtChapterEnd) this.changeChapter(1);
-			else this.nextPage();
 		}
 	},
 
