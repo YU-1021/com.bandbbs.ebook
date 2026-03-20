@@ -88,6 +88,7 @@ export default {
 		totalPages: 0,
 		currentPage: 0,
 		isKeepScreenOn: false,
+		keepScreenOnByAuto: false,
 		currentChapterIndexInAll: 0,
 		currentChapterName: "",
 		isAtChapterEnd: false,
@@ -784,7 +785,16 @@ export default {
 		}
 		if (nextIndex >= this.totalChapters) {
 			prompt.showToast({ message: '已是最后一章' });
-			if (this.autoInterval) { clearInterval(this.autoInterval); this.autoInterval = null; }
+			if (this.autoInterval) {
+				clearInterval(this.autoInterval);
+				this.autoInterval = null;
+				prompt.showToast({ message: '已关闭自动翻页' });
+				if (this.keepScreenOnByAuto) {
+					this.keepScreenOnByAuto = false;
+					this.isKeepScreenOn = false;
+					brightness.setKeepScreenOn({ keepScreenOn: false });
+				}
+			}
 			this.wait = false;
 			this.isChangingChapter = false;
 			return;
@@ -1323,7 +1333,17 @@ export default {
 	},
 	onTxtLongPress(event) {
 		if (this.auto) {
-			if (this.autoInterval) { clearInterval(this.autoInterval); this.autoInterval = null; prompt.showToast({ message: '已关闭自动翻页' }); return; }
+			if (this.autoInterval) {
+				clearInterval(this.autoInterval);
+				this.autoInterval = null;
+				prompt.showToast({ message: '已关闭自动翻页' });
+				if (this.keepScreenOnByAuto) {
+					this.keepScreenOnByAuto = false;
+					this.isKeepScreenOn = false;
+					brightness.setKeepScreenOn({ keepScreenOn: false });
+				}
+				return;
+			}
 			this.autoInterval = setInterval(() => {
 				if (this.wait) return;
 				if (this.readMode === 'nostalgic') this.turnNostalgicPage(1);
@@ -1331,12 +1351,17 @@ export default {
 				else this.nextPage();
 			}, this.auto * 1000);
 			prompt.showToast({ message: '已开启自动翻页' });
+			if (!this.isKeepScreenOn) {
+				this.keepScreenOnByAuto = true;
+				this.isKeepScreenOn = true;
+			}
 		}
 	},
 	lastPage() { this.$element("scrollId").scrollBy({ top: -(this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }); },
 	nextPage() { this.$element("scrollId").scrollBy({ top: (this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }); },
 	toggleKeepScreenOn() {
 		this.isKeepScreenOn = !this.isKeepScreenOn;
+		this.keepScreenOnByAuto = false;
 		brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
 		prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' });
 	},
