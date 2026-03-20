@@ -196,11 +196,15 @@ export default {
 	},
 	onInit() {
 		this.updateTime();
-		this.timer = setInterval(() => { this.updateTime(); }, 1000);
+		this.timer = setInterval(() => { this.updateTime(); }, 10000);
 		globalThis.isKeepScreenOn = this.isKeepScreenOn;
 		global.runGC();
 	},
 	async onShow() {
+		if (!this.timer) {
+			this.updateTime();
+			this.timer = setInterval(() => { this.updateTime(); }, 10000);
+		}
 		await this.loadSettings();
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize);
 		if (typeof globalThis.isKeepScreenOn !== 'undefined' && this.isKeepScreenOn !== globalThis.isKeepScreenOn) {
@@ -330,7 +334,7 @@ export default {
 		let prog = 0;
 		if (this.readMode === 'nostalgic') {
 			if (this.allSize > 0) {
-				const READ_LEN = 2000;
+				const READ_LEN = this.txtSizePage * 2;
 				let bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1);
 				let scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0);
 				prog = (scrolled / this.allSize) * 100;
@@ -500,11 +504,13 @@ export default {
 			} else {
 				const targetOffset = (this._fromBookmark && this._bookmarkOffsetInChapter > 0) ? this._bookmarkOffsetInChapter :
 					(this._fromPercent && this._percentOffsetInChapter > 0) ? this._percentOffsetInChapter : null;
+
 				const restore = (top) => {
 					this.scrollTopValue = Math.max(0, Math.floor(top));
 					this.currentScrollTop = Math.max(0, Math.floor(top));
 					this.finalizeScrollRestore();
 				};
+
 				if (targetOffset !== null && targetOffset > 0) {
 					this.$element("page1").getBoundingClientRect({
 						success: (page1Rect) => {
@@ -897,6 +903,7 @@ export default {
 		if (this.saveDataTimeout) clearTimeout(this.saveDataTimeout);
 		if (this.readingTimeSaveTimer) { clearInterval(this.readingTimeSaveTimer); this.readingTimeSaveTimer = null; }
 		if (this.autoInterval) clearInterval(this.autoInterval);
+		if (this.timer) { clearInterval(this.timer); this.timer = null; }
 		await this._performSave();
 		if (this.name) try { await readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
 		brightness.setKeepScreenOn({ keepScreenOn: false });
@@ -1015,14 +1022,14 @@ export default {
 
 	loadNostalgicEnd() {
 		this.wait = true;
-		const READ_LEN = 2000;
+		const READ_LEN = this.txtSizePage * 2;
 		let offset = Math.max(0, this.allSize - READ_LEN);
 		this.nostalgicSavedOffset = offset;
 		this.readNostalgicText(offset, (str) => {
 			this.nostalgicText = str;
 			this.getNostalgicBoxHeight('box1', (h) => {
 				this.nostalgicBoxAllHeightNormal = h;
-				this.nostalgicOffsetTopNormal = (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1;
+				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0;
 				this.resetNostalgicPageOffset();
 				this.wait = false;
 				this.isChangingChapter = false;
@@ -1031,7 +1038,7 @@ export default {
 	},
 
 	readNostalgicText(readOffset, cb) {
-		const READ_LEN = 2000;
+		const READ_LEN = this.txtSizePage * 2;
 		let length = READ_LEN;
 		if (readOffset >= this.allSize) { cb(''); return; }
 		if (readOffset < 0) { length += readOffset; readOffset = 0; }
@@ -1082,7 +1089,7 @@ export default {
 
 	resetNostalgicPageOffset() {
 		let showPre = false;
-		const READ_LEN = 2000;
+		const READ_LEN = this.txtSizePage * 2;
 		if (this.nostalgicOffsetTopNormal > 0) {
 			if (this.nostalgicOffsetTopNormal >= this.pageHeigh) {
 				if (this.nostalgicBoxAllHeightPreview > 0 && this.nostalgicPreViewShowFlag) {
@@ -1149,9 +1156,9 @@ export default {
 			}
 		} else {
 			let preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
-			if (preOffset >= 0 && preOffset < this.pageHeigh) {
+			if (preOffset > 0 && preOffset < this.pageHeigh) {
 				if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
-					this.nostalgicOffsetTopNormal = (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1;
+					this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0;
 					this.isAtChapterEnd = true;
 				} else {
 					this.nostalgicOffsetTopPreview = preOffset;
@@ -1166,7 +1173,7 @@ export default {
 						});
 					});
 				}
-			} else if (preOffset < 0) {
+			} else if (preOffset <= 0) {
 				if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
 					this.nostalgicOffsetTopNormal -= preOffset;
 					if (this.currentChapterIndexInAll < this.totalChapters - 1) {
@@ -1195,7 +1202,7 @@ export default {
 	},
 
 	updateNostalgicProgress() {
-		const READ_LEN = 2000;
+		const READ_LEN = this.txtSizePage * 2;
 		this.isAtChapterStart = (this.nostalgicSavedOffset === 0 && this.nostalgicOffsetTopNormal >= 0);
 		let preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
 		this.isAtChapterEnd = (this.nostalgicSavedOffset + READ_LEN >= this.allSize && preOffset <= 0);
