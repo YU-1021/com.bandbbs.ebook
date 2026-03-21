@@ -1,8 +1,8 @@
 {
   "package": "com.bandbbs.ebook.plus",
   "name": "电子书",
-  "versionName": "V26.2.2.BAND9",
-  "versionCode": 260314,
+  "versionName": "V26.2.3.BAND9",
+  "versionCode": 260321,
   "minPlatformVersion": 1100,
   "icon": "/common/logo.png",
   "simulationVersion": "default",
