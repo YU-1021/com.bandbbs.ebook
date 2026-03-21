@@ -1,5 +1,5 @@
 <template>
-	<div class="page" style="flex-direction: column;">
+	<div class="page center" style="flex-direction: column;">
 		<text class="tip-title">{{title}}</text>
 		<text class="tip-content">{{content}}</text>
 		<img static src="/common/images/conform2.png" class="confirm-button" @click="confirm"/>
