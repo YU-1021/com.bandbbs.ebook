@@ -8,8 +8,18 @@
       </list-item>
       <list-item for="{{visibleChapters}}" style="height: 135px;" class="item" @click="selectChapter($item)" onlongpress="deleteChapter($item)" type="chapter">
         <div class="chapter-info">
-            <text class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}">{{$item.name}}</text>
-            <text class="itemtext2">{{$item.wordCount}} 字</text>
+            <marquee if="{{chapterListItemMarqueeEnabled}}" class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}" scrollamount="20" text-offset="20">
+              {{$item.name}}
+            </marquee>
+            <text else class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}">
+              {{$item.name}}
+            </text>
+            <marquee if="{{chapterListItemMarqueeEnabled}}" class="itemtext2" scrollamount="20" text-offset="20">
+              {{$item.wordCount}} 字
+            </marquee>
+            <text else class="itemtext2">
+              {{$item.wordCount}} 字
+            </text>
         </div>
       </list-item>
       <list-item type="pagination" class="pagination-container" if="{{totalPages > 1}}">
@@ -29,6 +39,7 @@ import router from '@system.router';
 import prompt from '@system.prompt';
 import bookStorage from '../../utils/bookStorage.js';
 import chapterManager from '../../utils/chapterManager.js';
+import storage from '../../utils/storage.js';
 
 const PAGE_SIZE = 8;
 
@@ -41,17 +52,27 @@ export default {
     currentChapterIndex: -1,
     loading: false,
     longPressTriggered: false,
-    longPressTimeout: null
+    longPressTimeout: null,
+    chapterListItemMarqueeEnabled: false
   },
   protected: {
     name: ''
   },
   
   onInit() {
+    storage.get({
+        key: 'EBOOK_CHAPTER_LIST_ITEM_MARQUEE_ENABLED',
+        success: (data) => { this.chapterListItemMarqueeEnabled = data === 'true'; },
+        fail: () => { this.chapterListItemMarqueeEnabled = false; }
+    });
     this.initChapterList();
   },
   
   onShow() {
+    storage.get({
+        key: 'EBOOK_CHAPTER_LIST_ITEM_MARQUEE_ENABLED',
+        success: (data) => { this.chapterListItemMarqueeEnabled = data === 'true'; }
+    });
     this.initChapterList();
   },
   
