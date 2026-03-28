@@ -6,7 +6,7 @@
         文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本文本预览文本预览
       </text>
     </div>
-    <number style="position: absolute; top: 365px;" max.static="40" min.static="20" step.static="1" unit.static="px" value="{{fontSize}}" @change="change" name.static="当前字号"></number>
+    <number style="position: absolute; top: 365px;" max.static="40" min.static="5" step.static="1" unit.static="px" value="{{fontSize}}" @change="change" name.static="当前字号"></number>
     <text style="position: absolute;top: 16px;width: 212px;line-height: 32px;font-weight:bold;font-size:18px;color:rgba(255,255,255,0.6);text-align:center;">
       {{nowTime}}
     </text>
