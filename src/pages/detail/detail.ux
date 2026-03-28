@@ -359,8 +359,14 @@ export default {
 	},
 
 	calculateDisplayProgress() {
-		if (!this.showProgressBar) { this.displayProgress = 0; return; }
-		if (this.isAtChapterEnd) { this.displayProgress = 100; return; }
+		if (!this.showProgressBar) { 
+			if (this.displayProgress !== 0) this.displayProgress = 0; 
+			return; 
+		}
+		if (this.isAtChapterEnd) { 
+			if (this.displayProgress !== 100) this.displayProgress = 100; 
+			return; 
+		}
 		let prog = 0;
 		if (this.readMode === 'nostalgic') {
 			if (this.allSize > 0) {
@@ -379,7 +385,12 @@ export default {
 				prog = (totalScrolled / this.allSize) * 100;
 			}
 		}
-		this.displayProgress = Math.min(100, Math.max(0, prog));
+
+		let newProg = Math.min(100, Math.max(0, prog));
+		newProg = Math.round(newProg * 10) / 10;
+		if (this.displayProgress !== newProg) {
+			this.displayProgress = newProg;
+		}
 	},
 
 	async loadBook() {
@@ -692,16 +703,38 @@ export default {
 
 	onScroll(e) {
 		if (this.wait) return;
-		if (this.isAtChapterEnd && e.scrollY < this.currentScrollTop) this.isAtChapterEnd = false;
+		if (this.isAtChapterEnd && e.scrollY < this.currentScrollTop) {
+			this.isAtChapterEnd = false;
+		}
 		this.currentScrollTop = e.scrollY;
-		this.calculateDisplayProgress();
-		this.isAtChapterStart = this.currentFileOffset === 0 && this.currentScrollTop < 10;
-		this.isNearTopForHd = this.currentFileOffset === 0 && this.currentScrollTop < this.alwaysShowTimeSensitivity;
+
+		const now = Date.now();
+		if (!this._lastCalcTime || now - this._lastCalcTime > 100) {
+			this.calculateDisplayProgress();
+			this._lastCalcTime = now;
+		} else {
+			if (this._scrollTimer) clearTimeout(this._scrollTimer);
+			this._scrollTimer = setTimeout(() => {
+				this.calculateDisplayProgress();
+			}, 150);
+		}
+
+		const isStart = this.currentFileOffset === 0 && this.currentScrollTop < 10;
+		if (this.isAtChapterStart !== isStart) this.isAtChapterStart = isStart;
+
+		const isNearTop = this.currentFileOffset === 0 && this.currentScrollTop < this.alwaysShowTimeSensitivity;
+		if (this.isNearTopForHd !== isNearTop) this.isNearTopForHd = isNearTop;
+
 		if (this.contentHeight > this.scrollHeight) {
 			const threshold = this.auto ? 40 : this.chapterSwitchSensitivity;
 			if (this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)) {
 				let lastSeg = this.page2 || this.page1;
-				if ((lastSeg.offset + lastSeg.length) >= this.allSize) this.isAtChapterEnd = true;
+				if ((lastSeg.offset + lastSeg.length) >= this.allSize) {
+					if (!this.isAtChapterEnd) {
+						this.isAtChapterEnd = true;
+						this.calculateDisplayProgress();
+					}
+				}
 			}
 		}
 	},
@@ -990,6 +1023,7 @@ export default {
 		if (this.clickTimeout) clearTimeout(this.clickTimeout);
 		if (this.gestureClickTimeout) clearTimeout(this.gestureClickTimeout);
 		if (this.longPressTimeout) clearTimeout(this.longPressTimeout);
+		if (this._scrollTimer) clearTimeout(this._scrollTimer);
 		await this._performSave();
 		if (this.name) try { await readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
 		brightness.setKeepScreenOn({ keepScreenOn: false });
@@ -1299,9 +1333,13 @@ export default {
 		if (this.allSize > 0) {
 			let bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1);
 			let scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0);
-			this.displayProgress = Math.min(100, Math.max(0, (scrolled / this.allSize) * 100));
+			let newProg = Math.min(100, Math.max(0, (scrolled / this.allSize) * 100));
+			newProg = Math.round(newProg * 10) / 10;
+			if (this.displayProgress !== newProg) {
+				this.displayProgress = newProg;
+			}
 		} else {
-			this.displayProgress = 0;
+			if (this.displayProgress !== 0) this.displayProgress = 0;
 		}
 		this.saveData(true);
 	},
