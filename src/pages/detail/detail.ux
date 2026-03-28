@@ -1,6 +1,6 @@
 <template>
 	<div class="page">
-		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 340px; height: 340px; top: 70px; left: 70px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
+		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 340px; height: 340px; top: 70px; left: 70px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" @longpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
 			<div id="contentContainer" style="position: absolute; width:340px; flex-direction: column;">
 				<div if="{{chapterSwitchStyle == 'button' && currentChapterIndexInAll > 0}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onPrevChapterClick">
 					<text static style="color: #aaa; font-size: 28px; font-weight: bold;">上一章</text>
@@ -29,7 +29,7 @@
 			</div>
 		</scroll>
 		
-		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 340px; height: 340px; top: 70px; left: 70px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" onlongpress="onTxtLongPress">
+		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 340px; height: 340px; top: 70px; left: 70px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" @longpress="onTxtLongPress">
 			<div id="nostalgicContainer" style="position: absolute; width: 340px; height: {{pageHeigh}}px; top: {{nostalgicTop}}px; overflow: hidden; pointer-events: none;">
 				<text id="box1" style="lines: -1; width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
 				<text id="box2" if="{{nostalgicPreViewShowFlag}}" style="lines: -1; width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopPreview}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicTextPre}}</text>
@@ -281,6 +281,7 @@ export default {
 			else if (key === 'EBOOK_AUTO') {
 				const parsed = typeof val === 'string' ? JSON.parse(val) : val;
 				if (parsed && parsed.enable) this.auto = parsed.speed;
+				else this.auto = false;
 			} else if (typeof defaultValue === 'number') this[prop] = parseInt(val);
 			else if (typeof defaultValue === 'boolean') this[prop] = val === 'true' || val === true;
 			else this[prop] = val;
@@ -1410,6 +1411,9 @@ export default {
 				this.keepScreenOnByAuto = true;
 				this.isKeepScreenOn = true;
 			}
+			brightness.setKeepScreenOn({ keepScreenOn: true });
+		} else {
+			prompt.showToast({ message: '请先在设置中开启自动翻页' });
 		}
 	},
 
@@ -1468,4 +1472,3 @@ export default {
 <style>
   @import '../../common/style.css';
 </style>
-
