@@ -2,8 +2,8 @@ import storage from '../utils/storage.js';
 
 const READING_TIME_KEY = 'EBOOK_READING_TIME_DATA';
 
-const sessionStartTimes = {};
-const lastSavedTimes = {};
+let currentReadingBook = null;
+let sessionStartTime = 0;
 let readingTimeCache = null;
 let recordingEnabledCache = null;
 
@@ -63,29 +63,24 @@ async function saveReadingTime(readingTimeData) {
 async function recordReadingStart(bookName) {
     if (!bookName) return;
     if (!(await isReadingTimeRecordingEnabled())) return;
-    if (sessionStartTimes[bookName] && lastSavedTimes[bookName]) return;
-    const now = Date.now();
-    sessionStartTimes[bookName] = now;
-    lastSavedTimes[bookName] = now;
+    currentReadingBook = bookName;
+    sessionStartTime = Date.now();
 }
 
-async function saveCurrentSession(bookName) {
-    if (!bookName) return;
+async function recordReadingEnd(bookName) {
+    if (!bookName || bookName !== currentReadingBook) return;
     if (!(await isReadingTimeRecordingEnabled())) return;
-
-    const startTime = sessionStartTimes[bookName];
-    const lastSavedTime = lastSavedTimes[bookName];
-    if (!startTime || !lastSavedTime) return;
-
-    const now = Date.now();
-    const duration = Math.floor((now - lastSavedTime) / 1000);
-
+    if (sessionStartTime === 0) return;
+    
+    const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
+    sessionStartTime = 0;
+    currentReadingBook = null;
+    
     if (duration < 10) return;
-
+    
     try {
         const readingTimeData = await getAllReadingTime();
         let bookData = readingTimeData[bookName];
-
         if (!bookData) {
             bookData = {
                 totalSeconds: 0,
@@ -95,76 +90,38 @@ async function saveCurrentSession(bookName) {
             };
             readingTimeData[bookName] = bookData;
         }
-
         bookData.totalSeconds = (bookData.totalSeconds || 0) + duration;
-        const sessionDate = new Date(lastSavedTime).toISOString().split('T')[0];
+        
+        const now = Date.now();
+        const sessionDate = new Date(now).toISOString().split('T')[0];
+        
         const session = {
-            startTime: lastSavedTime,
+            startTime: now - duration * 1000,
             endTime: now,
             duration: duration,
             date: sessionDate
         };
-
+        
         if (!bookData.sessions) bookData.sessions = [];
         bookData.sessions.push(session);
+        
         bookData.lastReadDate = sessionDate;
         if (!bookData.firstReadDate) bookData.firstReadDate = sessionDate;
-
-        lastSavedTimes[bookName] = now;
+        
         await saveReadingTime(readingTimeData);
     } catch (e) {}
 }
 
-async function recordReadingEnd(bookName) {
-    if (!bookName) return;
-    if (!(await isReadingTimeRecordingEnabled())) return;
-
-    const startTime = sessionStartTimes[bookName];
-    const lastSavedTime = lastSavedTimes[bookName];
-    if (!startTime || !lastSavedTime) {
-        delete sessionStartTimes[bookName];
-        delete lastSavedTimes[bookName];
-        return;
-    }
-
-    const endTime = Date.now();
-    const remainingDuration = Math.floor((endTime - lastSavedTime) / 1000);
-
-    delete sessionStartTimes[bookName];
-    delete lastSavedTimes[bookName];
-
-    if (remainingDuration < 10) return;
-
-    try {
-        const readingTimeData = await getAllReadingTime();
-        let bookData = readingTimeData[bookName];
-
-        if (!bookData) {
-            bookData = {
-                totalSeconds: 0,
-                sessions: [],
-                lastReadDate: null,
-                firstReadDate: null
-            };
-            readingTimeData[bookName] = bookData;
-        }
-
-        bookData.totalSeconds = (bookData.totalSeconds || 0) + remainingDuration;
-        const sessionDate = new Date(lastSavedTime).toISOString().split('T')[0];
-        const session = {
-            startTime: lastSavedTime,
-            endTime: endTime,
-            duration: remainingDuration,
-            date: sessionDate
-        };
-
-        if (!bookData.sessions) bookData.sessions = [];
-        bookData.sessions.push(session);
-        bookData.lastReadDate = sessionDate;
-        if (!bookData.firstReadDate) bookData.firstReadDate = sessionDate;
-
-        await saveReadingTime(readingTimeData);
-    } catch (e) {}
+async function saveCurrentSession(bookName) {
+    if (!bookName || bookName !== currentReadingBook) return;
+    if (sessionStartTime === 0) return;
+    
+    const now = Date.now();
+    const duration = Math.floor((now - sessionStartTime) / 1000);
+    if (duration < 10) return;
+    
+    await recordReadingEnd(bookName);
+    await recordReadingStart(bookName);
 }
 
 async function getReadingTime(bookName) {
@@ -179,11 +136,9 @@ async function getReadingTime(bookName) {
 
 function formatDuration(seconds) {
     if (!seconds || seconds < 0) return '0分钟';
-
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
     if (hours > 0) {
         return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
     }
@@ -207,41 +162,34 @@ function getWeekStartDate() {
 function calculateStatsCore(sessions, totalSecondsOverride) {
     const today = getTodayDateString();
     const weekStart = getWeekStartDate();
-    
     let totalSeconds = totalSecondsOverride !== undefined ? totalSecondsOverride : 0;
     let todaySeconds = 0;
     let weekSeconds = 0;
     let maxDailySeconds = 0;
     const dailyTotals = {};
     const totalDays = new Set();
-    
     let firstDate = null;
     let lastDate = null;
-
+    
     if (sessions && sessions.length > 0) {
         const calcTotal = totalSecondsOverride === undefined;
-        
         sessions.forEach(session => {
             const date = session.date;
             if (!date) return;
-            
             if (calcTotal) totalSeconds += (session.duration || 0);
-            
             totalDays.add(date);
             dailyTotals[date] = (dailyTotals[date] || 0) + (session.duration || 0);
-
             if (date === today) todaySeconds += (session.duration || 0);
             if (date >= weekStart) weekSeconds += (session.duration || 0);
-            
             if (!firstDate || date < firstDate) firstDate = date;
             if (!lastDate || date > lastDate) lastDate = date;
         });
     }
-
+    
     Object.values(dailyTotals).forEach(val => {
         if (val > maxDailySeconds) maxDailySeconds = val;
     });
-
+    
     let totalWeeks = 1;
     if (firstDate && lastDate) {
         const first = new Date(firstDate);
@@ -249,9 +197,9 @@ function calculateStatsCore(sessions, totalSecondsOverride) {
         const daysDiff = Math.ceil((last - first) / (1000 * 60 * 60 * 24)) + 1;
         totalWeeks = Math.ceil(daysDiff / 7) || 1;
     }
-
+    
     const totalDaysCount = totalDays.size || 1;
-
+    
     return {
         totalSeconds,
         totalDays: totalDays.size,
@@ -269,22 +217,18 @@ function calculateStatsCore(sessions, totalSecondsOverride) {
 function calculateGlobalStats(allBooksData) {
     let allSessions = [];
     let combinedTotalSeconds = 0;
-
     Object.values(allBooksData).forEach(bookData => {
         if (bookData.totalSeconds) combinedTotalSeconds += bookData.totalSeconds;
         if (bookData.sessions && bookData.sessions.length > 0) {
             allSessions = allSessions.concat(bookData.sessions);
         }
     });
-
     return calculateStatsCore(allSessions, combinedTotalSeconds);
 }
 
 function calculateBookStats(bookData) {
     if (!bookData) return calculateStatsCore([]);
-    
     const stats = calculateStatsCore(bookData.sessions || [], bookData.totalSeconds);
-    
     stats.firstReadDate = bookData.firstReadDate || '';
     stats.lastReadDate = bookData.lastReadDate || '';
     return stats;
@@ -304,11 +248,9 @@ function getLast7DaysDateStrings() {
 function getLast7DaysReadingTime(sessions) {
     const dates = getLast7DaysDateStrings();
     const dailyData = {};
-    
     dates.forEach(date => {
         dailyData[date] = 0;
     });
-    
     if (sessions && sessions.length > 0) {
         sessions.forEach(session => {
             const date = session.date;
@@ -317,7 +259,6 @@ function getLast7DaysReadingTime(sessions) {
             }
         });
     }
-    
     return dates.map(date => Math.floor(dailyData[date] / 60));
 }
 
@@ -333,8 +274,8 @@ function getLast7DaysGlobalReadingTime(allBooksData) {
 
 async function clearAllReadingTime() {
     readingTimeCache = {};
-    Object.keys(sessionStartTimes).forEach(key => delete sessionStartTimes[key]);
-    Object.keys(lastSavedTimes).forEach(key => delete lastSavedTimes[key]);
+    currentReadingBook = null;
+    sessionStartTime = 0;
     return new Promise((resolve, reject) => {
         storage.set({
             key: READING_TIME_KEY,
