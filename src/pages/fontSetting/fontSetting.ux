@@ -7,7 +7,7 @@
 			文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本预览文本
 		</text>
 	</div>
-	<number style="position: absolute; bottom: 28px; left: 112px;" max.static="50" min.static="20" step.static="1" value="{{fontSize}}" @change="change" name.static="当前字号"></number>
+	<number style="position: absolute; bottom: 28px; left: 112px;" max.static="50" min.static="5" step.static="1" value="{{fontSize}}" @change="change" name.static="当前字号"></number>
 	
 	<img static src="/common/images/set.png" @click="back()" class="header-more"/>
 	<text static class="header-title">
