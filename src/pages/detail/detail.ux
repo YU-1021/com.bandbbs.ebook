@@ -206,7 +206,7 @@ export default {
 
 	onInit() {
 		this.updateStatus();
-		this.timer = setInterval(() => { this.updateStatus(); }, 600000);
+		this.timer = setInterval(() => { this.updateStatus(); }, 1000);
 		globalThis.isKeepScreenOn = this.isKeepScreenOn;
 		global.runGC();
 	},
@@ -214,7 +214,7 @@ export default {
 	async onShow() {
 		if (!this.timer) {
 			this.updateStatus();
-			this.timer = setInterval(() => { this.updateStatus(); }, 600000);
+			this.timer = setInterval(() => { this.updateStatus(); }, 1000);
 		}
 		await this.loadSettings();
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize);
