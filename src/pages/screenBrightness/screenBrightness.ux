@@ -10,7 +10,7 @@
 			</text>
 		</div>
 
-		<number show="{{!followSystem}}" style="position: absolute; top: 365px" max.static="255" min.static="10" step.static="1" unit.static="点" value="{{brightnessValue}}" @change="change" name.static="自定义亮度">
+		<number show="{{!followSystem}}" style="position: absolute; top: 365px" max.static="255" min.static="20" step.static="1" unit.static="点" value="{{brightnessValue}}" @change="change" name.static="自定义亮度">
 		</number>
 
         <text style="position: absolute;top: 16px;width: 212px;line-height: 32px;font-weight:bold;font-size:18px;color:rgba(255,255,255,0.6);text-align:center;">
