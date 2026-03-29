@@ -299,6 +299,9 @@ export default class interconnfile {
             });
             await bookStorage.updateBooks(bookshelfAfterClear);
         } else {
+            await this.ensureDir(bookUri);
+            await this.ensureDir(bookUri + '/indexes');
+
             try {
                 const bookInfo = JSON.parse((await runAsyncFunc(file.readText, { uri: bookInfoUri })).text);
                 if (bookInfo.coverFileName) coverFileName = bookInfo.coverFileName;
@@ -306,11 +309,16 @@ export default class interconnfile {
             } catch (e) {}
 
             await this.rebuildSyncedIndices();
-            const lindexData = await runAsyncFunc(file.readText, { uri: lindexUri });
-            let lines = lindexData.text.split('\n');
-            lines[0] = total.toString();
-            lines[1] = this.receivedChapters.toString();
-            this.lindexContent = lines.join('\n');
+            
+            try {
+                const lindexData = await runAsyncFunc(file.readText, { uri: lindexUri });
+                let lines = lindexData.text.split('\n');
+                lines[0] = total.toString();
+                lines[1] = this.receivedChapters.toString();
+                this.lindexContent = lines.join('\n');
+            } catch (e) {
+                this.lindexContent = this.generateLindexContent(total, this.receivedChapters);
+            }
             await runAsyncFunc(file.writeText, { uri: lindexUri, text: this.lindexContent });
         }
 
