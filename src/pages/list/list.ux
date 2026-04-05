@@ -11,7 +11,7 @@
             <marquee if="{{chapterListItemMarqueeEnabled}}" class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}" scrollamount="20" text-offset="20">
               {{$item.name}}
             </marquee>
-            <text else class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}" style="lines: 2;">
+            <text else class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}">
               {{$item.name}}
             </text>
             <marquee if="{{chapterListItemMarqueeEnabled}}" class="itemtext2" scrollamount="20" text-offset="20">
