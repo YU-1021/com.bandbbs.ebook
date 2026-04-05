@@ -166,6 +166,14 @@ export default {
 					this.updateScene();
 				}
 			});
+
+		  router.push({
+			  uri: '/pages/help',
+			  params: {
+				  title: '怀旧模式提醒',
+				  content: '怀旧模式不是重点功能，Bug 可能很多，且很大概率不会修复。'
+			  }
+		  });
 		} else {
 			this.updateScene();
 		}
