@@ -953,7 +953,7 @@ export default {
 		global.runGC();
 	},
 	async onBackPress() {
-		if (this.readMode === 'nostalgic' && this.nostalgicPageTurnMode === 'swipe') {
+		if (this.readMode === 'nostalgic' && (this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe')) {
 			this.turnNostalgicPage(-1);
 			return true;
 		}
@@ -1230,7 +1230,7 @@ export default {
 		this.saveData(true);
 	},
 	onNostalgicTouchStart(e) {
-		if (this.nostalgicPageTurnMode === 'swipe') {
+		if (this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') {
 			this.nostalgicIsTouching = true;
 			this.nostalgicTouchStartX = e.touches[0].clientX;
 			this.nostalgicTouchStartY = e.touches[0].clientY;
@@ -1239,17 +1239,23 @@ export default {
 		}
 	},
 	onNostalgicTouchMove(e) {
-		if (this.nostalgicPageTurnMode === 'swipe' && this.nostalgicIsTouching) {
+		if ((this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') && this.nostalgicIsTouching) {
 			this.nostalgicTouchEndX = e.touches[0].clientX;
 			this.nostalgicTouchEndY = e.touches[0].clientY;
 		}
 	},
 	onNostalgicTouchEnd(e) {
-		if (this.nostalgicPageTurnMode === 'swipe' && this.nostalgicIsTouching) {
+		if ((this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') && this.nostalgicIsTouching) {
 			this.nostalgicIsTouching = false;
 			const deltaX = this.nostalgicTouchEndX - this.nostalgicTouchStartX;
-			if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(this.nostalgicTouchEndY - this.nostalgicTouchStartY)) {
-				if (deltaX < 0) this.turnNostalgicPage(1);
+			const deltaY = this.nostalgicTouchEndY - this.nostalgicTouchStartY;
+			if (this.nostalgicPageTurnMode === 'swipe') {
+				if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+					if (deltaX < 0) this.turnNostalgicPage(1);
+					else this.turnNostalgicPage(-1);
+				}
+			} else if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > Math.abs(deltaX)) {
+				if (deltaY < 0) this.turnNostalgicPage(1);
 				else this.turnNostalgicPage(-1);
 			}
 		}
@@ -1273,7 +1279,7 @@ export default {
 				this.showSetting = !this.showSetting;
 				return;
 			}
-			if (this.nostalgicPageTurnMode === 'swipe') {
+			if (this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') {
 				this.showSetting = !this.showSetting;
 			} else {
 				const isTopBottom = this.nostalgicPageTurnMode === 'topBottomClick';
