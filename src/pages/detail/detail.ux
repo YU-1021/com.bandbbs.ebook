@@ -231,8 +231,15 @@ export default {
 		}
 		await this.loadSettings();
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize);
-		if (typeof globalThis.isKeepScreenOn !== 'undefined' && this.isKeepScreenOn !== globalThis.isKeepScreenOn) {
-			this.isKeepScreenOn = globalThis.isKeepScreenOn;
+		if (typeof globalThis.isKeepScreenOn !== 'undefined') {
+			const newKeepScreenOn = !!globalThis.isKeepScreenOn;
+			const keepScreenOnChanged = this.isKeepScreenOn !== newKeepScreenOn;
+			this.isKeepScreenOn = newKeepScreenOn;
+			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
+			if (keepScreenOnChanged) {
+				prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' });
+			}
+		} else {
 			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
 		}
 		storage.get({ key: 'EBOOK_TEACHER_SCREEN_ENABLED', success: (data) => { this.teacherScreenEnabled = data === 'true'; } });
@@ -1462,6 +1469,7 @@ export default {
 	toggleKeepScreenOn() {
 		this.isKeepScreenOn = !this.isKeepScreenOn;
 		this.keepScreenOnByAuto = false;
+		globalThis.isKeepScreenOn = this.isKeepScreenOn;
 		brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
 		prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' });
 	},
