@@ -23,6 +23,10 @@
 			<text class="itemtext" static>左右滑动</text>
 			  <img src="/common/images/check.png" class="check" if="{{nostalgicPageTurnMode === 'swipe'}}"/>
 		  </list-item>
+		  <list-item if="{{readMode === 'nostalgic'}}" class="item {{nostalgicPageTurnMode === 'topBottomSwipe' ? 'item2' : ''}}" @click="selectPageTurnMode('topBottomSwipe')" type="item">
+			<text class="itemtext" static>上下滑动</text>
+			  <img src="/common/images/check.png" class="check" if="{{nostalgicPageTurnMode === 'topBottomSwipe'}}"/>
+		  </list-item>
 		  <list-item if="{{readMode === 'nostalgic'}}" class="item {{nostalgicPageTurnMode === 'sideClick' ? 'item2' : ''}}" @click="selectPageTurnMode('sideClick')" type="item">
 			<text class="itemtext" static>两侧点击</text>
 			  <img src="/common/images/check.png" class="check" if="{{nostalgicPageTurnMode === 'sideClick'}}"/>
