@@ -4,7 +4,7 @@
       <list-item for="{{visibleChapters}}" class="item" @click="selectChapter($item)" onlongpress="deleteChapter($item)" type="chapter">
         <div class="chapter-info">
             <marquee if="{{chapterListItemMarqueeEnabled}}" class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}" scrollamount="30" text-offset="25">{{$item.name}}</marquee>
-            <text else class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}">{{$item.name}}</text>
+            <text else class="itemtext {{currentChapterIndex == $item.index ? 'itemtext-current' : ''}}" style="lines: 2;">{{$item.name}}</text>
             <marquee if="{{chapterListItemMarqueeEnabled}}" class="itemtext2" scrollamount="20" text-offset="20">{{$item.wordCount}} 字</marquee>
             <text else class="itemtext2">{{$item.wordCount}} 字</text>
         </div>
