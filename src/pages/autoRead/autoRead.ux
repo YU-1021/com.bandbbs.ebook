@@ -7,27 +7,37 @@
           自动翻页
         </text>
       </list-item>
-      
+
       <list-item class="item" @click="onClick" type="item">
         <text class="itemtext" static>开启自动翻页</text>
         <img src="{{enable ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch" />
       </list-item>
-      
+
       <list-item if="{{enable}}" style="height: 40px;" class="center" type="title">
         <text class="itemtext" style="font-size: 22px;text-align: center;" static>在阅读器长按切换</text>
       </list-item>
 
       <list-item if="{{enable}}" style="height: 64px;" class="center" type="title">
-        <text static class="page-title" style="font-size: 38px;color: #ffffff99;">
+        <text static class="page-title" style="font-size: 38px;color: #ffffff99;top: 5px;">
+          间隔时间设置
+        </text>
+      </list-item>
+
+      <list-item if="{{enable}}" style="height: 95px;" class="center" type="title">
+        <number if="{{enable}}" max.static="60" min.static="1" step.static="1" unit.static="s" value="{{ speed }}" @change="changeSpeed" name.static="间隔时间"></number>
+      </list-item>
+
+      <list-item if="{{enable}}" style="height: 64px;" class="center" type="title">
+        <text static class="page-title" style="font-size: 38px;color: #ffffff99;top: 5px;">
           翻页距离设置
         </text>
       </list-item>
 
       <list-item if="{{enable}}" style="height: 95px;" class="center" type="title">
-        <number if="{{enable}}" max.static="120" min.static="10" step.static="5" value="{{ distanceValue }}" @change="change" name.static="调整距离"></number>
+        <number if="{{enable}}" max.static="120" min.static="10" step.static="5" value="{{ distanceValue }}" @change="changeDistance" name.static="调整距离"></number>
       </list-item>
     </list>
-  
+
     <img static src="/common/images/set.png" @click="back()" class="header-more"/>
   </div>
 </template>
@@ -38,23 +48,32 @@ import storage from '../../utils/storage.js'
 
 const DISTANCE_KEY = 'EBOOK_AUTO_READ_DISTANCE';
 const DEFAULT_DISTANCE = 100;
+const DEFAULT_SPEED = 10;
 
 export default {
   private: {
     distanceValue: DEFAULT_DISTANCE,
+    speed: DEFAULT_SPEED,
     enable: false
   },
-  
+
   onInit() {
     storage.get({
       key: 'EBOOK_AUTO',
       success: (data) => {
         if (data) {
-          ({enable: this.enable} = JSON.parse(data));
+          try {
+            const parsed = JSON.parse(data);
+            this.speed = parsed.speed !== undefined ? parsed.speed : DEFAULT_SPEED;
+            this.enable = parsed.enable !== undefined ? parsed.enable : false;
+          } catch (e) {
+            this.speed = DEFAULT_SPEED;
+            this.enable = false;
+          }
         }
       }
     });
-    
+
     storage.get({
       key: DISTANCE_KEY,
       success: (data) => {
@@ -65,26 +84,31 @@ export default {
     });
   },
 
-  change(e) {
+  changeSpeed(e) {
+    this.speed = e.detail.value;
+    this.save();
+  },
+
+  changeDistance(e) {
     this.distanceValue = e.detail.value;
     storage.set({
       key: DISTANCE_KEY,
       value: this.distanceValue.toString(),
     });
   },
-  
+
   back() {
     this.save();
     router.back();
   },
-  
+
   save() {
     storage.set({
       key: 'EBOOK_AUTO',
-      value: JSON.stringify({enable: this.enable})
+      value: JSON.stringify({ speed: this.speed, enable: this.enable })
     });
   },
-  
+
   onClick() {
     this.enable = !this.enable;
     this.save();
