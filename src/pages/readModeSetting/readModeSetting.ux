@@ -94,6 +94,14 @@
 				  this.nostalgicPageTurnMode = 'topBottomClick';
 			  }
 		  });
+
+		  router.push({
+			  uri: '/pages/help',
+			  params: {
+				  title: '怀旧模式提醒',
+				  content: '怀旧模式不是重点功能，Bug 可能很多，且很大概率不会修复。'
+			  }
+		  });
 	  }
 	},
 
