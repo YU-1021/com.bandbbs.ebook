@@ -1154,16 +1154,19 @@ export default {
 	async gotoSetting() {
 		if (this.isProcessingClick) return;
 		this.isProcessingClick = true;
-		this.calculateDisplayProgress();
-		this.saveData(true);
-		globalThis.readerChapterAllSize = this.allSize;
-		globalThis.readerChapterIndex = this.currentChapterIndexInAll;
-		globalThis.readerChapterProgressPercent = parseFloat(this.displayProgress) || 0;
-		globalThis.readerTxtSizePage = this.txtSizePage;
-		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
-		this.readingTimeSaveTimer = null;
-		router.push({ uri: '/pages/detailsetting', params: { name: this.name } });
-		setTimeout(() => { this.isProcessingClick = false; }, 500);
+		try {
+			this.calculateDisplayProgress();
+			this.saveData(true);
+			globalThis.readerChapterAllSize = this.allSize;
+			globalThis.readerChapterIndex = this.currentChapterIndexInAll;
+			globalThis.readerChapterProgressPercent = parseFloat(this.displayProgress) || 0;
+			globalThis.readerTxtSizePage = this.txtSizePage;
+			if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
+			this.readingTimeSaveTimer = null;
+			router.push({ uri: '/pages/detailsetting', params: { name: this.name } });
+		} finally {
+			setTimeout(() => { this.isProcessingClick = false; }, 500);
+		}
 	},
 
 	async exitAppForTeacherScreen() {
