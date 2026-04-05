@@ -1502,6 +1502,7 @@ export default {
 			if (!this.isKeepScreenOn) {
 				this.keepScreenOnByAuto = true;
 				this.isKeepScreenOn = true;
+				brightness.setKeepScreenOn({ keepScreenOn: true });
 			}
 			brightness.setKeepScreenOn({ keepScreenOn: true });
 		}
