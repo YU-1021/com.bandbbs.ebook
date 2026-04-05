@@ -1,7 +1,7 @@
 <template>
 	<div class="page">
     <scroll scroll-y="{{true}}" bounces="{{true}}" style="position: absolute;width: 212px;height: 520px;padding-bottom: 50px;">
-      <img static src="/common/images/about_bg.png" style="width: 100%;"/>
+      <img static src="/common/images/about.png" style="width: 100%;"/>
 
       <text style="position: absolute;left: 24px;top: 102px;width: 164px;height: 35px;font-size: 29px;font-weight: bold;color: #FFFFFF;">
         弦{{appName}}
