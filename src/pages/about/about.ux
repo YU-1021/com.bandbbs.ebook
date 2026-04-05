@@ -12,11 +12,18 @@
       </list-item>
       <list-item style="height: 64px;" class="center" type="title">
         <text static class="page-title" style="font-size: 38px;color: #ffffff99;">
+          开发者
+        </text>
+      </list-item>
+      <list-item type="content" class="item center" style="width: 416px;height: 110px;flex-direction: column;">
+        <text style="font-size: 38px;font-weight:bold;top: 5px;">@爅峫moye</text>
+      </list-item>
+      <list-item style="height: 64px;" class="center" type="title">
+        <text static class="page-title" style="font-size: 38px;color: #ffffff99;">
           参与开发的人员
         </text>
       </list-item>
       <list-item type="content" class="item center" style="width: 416px;height: 278px;flex-direction: column;">
-        <text style="font-size: 38px;font-weight:bold;">@爅峫moye</text>
         <text style="font-size: 38px;font-weight:bold;top: 5px;">@乐色桶</text>
         <text style="font-size: 38px;font-weight:bold;top: 5px;">@GiveMeFive</text>
         <text style="font-size: 38px;font-weight:bold;top: 5px;">@NEORUAA</text>
@@ -28,15 +35,7 @@
         </text>
       </list-item>
       <list-item type="content" class="item center" style="width: 416px;height: 110px;">
-        <text style="font-size: 38px;font-weight:bold;">vs.lucky-e.top</text>
-      </list-item>
-      <list-item style="height: 64px;" class="center" type="title">
-        <text static class="page-title" style="font-size: 38px;color: #ffffff99;">
-          QQ交流群
-        </text>
-      </list-item>
-      <list-item type="content" class="item center" style="width: 416px;height: 110px;">
-        <text style="font-size: 38px;font-weight:bold;">1067415278</text>
+        <text style="font-size: 38px;font-weight:bold;">vb.luoxe.cn</text>
       </list-item>
       <list-item style="height: 64px;" class="center" type="title">
         <text static class="page-title" style="font-size: 38px;color: #ffffff99;">
