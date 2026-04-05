@@ -961,22 +961,25 @@ export default {
 		global.runGC();
 	},
 
-	async onBackPress() {
-		if (this.readMode === 'nostalgic' && (this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe')) {
+	onBackPress() {
+		const nostalgicSwipeEnabled = this.readMode === 'nostalgic' && this.nostalgicPageTurnMode === 'swipe';
+		const scrollSwipeEnabled = this.readMode !== 'nostalgic' && this.chapterSwitchStyle === 'swipe';
+
+		if (nostalgicSwipeEnabled) {
 			this.turnNostalgicPage(-1);
 			return true;
 		}
-		else if (this.readMode !== 'nostalgic' && this.chapterSwitchStyle === 'swipe') {
+
+		if (scrollSwipeEnabled) {
 			this.changeChapter(-1);
 			return true;
 		}
-		else {	
-			if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer);
-			if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
-			if (this.autoInterval) clearInterval(this.autoInterval);
-			await this._performSave();
-			if (this.name) try { await readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
-		}
+
+		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer);
+		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
+		if (this.autoInterval) clearInterval(this.autoInterval);
+		this._performSave();
+		if (this.name) try { readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
 	},
 
 	async back() {
@@ -1106,7 +1109,8 @@ export default {
 						this.getNostalgicBoxHeight(id, cb, true);
 						return;
 					}
-					const height2 = Math.round(height / this.lineHeight) * this.lineHeight;
+					const line = this.lineHeight > 0 ? this.lineHeight : 1;
+					const height2 = Math.ceil(height / line) * line;
 					cb(height2);
 				},
 				fail: () => { cb(this.pageHeigh); }
@@ -1115,84 +1119,76 @@ export default {
 	},
 
 	resetNostalgicPageOffset() {
-		let showPre = false;
 		const READ_LEN = this.txtSizePage * 2;
+		this.nostalgicPreViewShowFlag = false;
+
 		if (this.nostalgicOffsetTopNormal > 0) {
-			if (this.nostalgicSavedOffset > 0) {
-				this.wait = true;
-				let offset = Math.max(0, this.nostalgicSavedOffset - READ_LEN);
-				const previousOffsetTop = this.nostalgicOffsetTopNormal;
-				this.readNostalgicText(offset, (str) => {
-					this.nostalgicText = str;
-					this.nostalgicSavedOffset = offset;
-					this.getNostalgicBoxHeight('box1', (h) => {
-						this.nostalgicBoxAllHeightNormal = h;
-						this.nostalgicOffsetTopNormal = (this.nostalgicBoxAllHeightNormal * -1) + previousOffsetTop;
-						if (offset <= 0 && this.nostalgicOffsetTopNormal > 0) {
-							this.nostalgicOffsetTopNormal = 0;
-							this.nostalgicSavedOffset = 0;
-							this.isAtChapterStart = true;
-						} else {
-							this.isAtChapterStart = false;
-						}
-						this.wait = false;
-						this.updateNostalgicProgress();
-					});
-				});
-				return;
-			} else {
+			if (this.nostalgicSavedOffset <= 0) {
 				this.nostalgicOffsetTopNormal = 0;
 				if (this.currentChapterIndexInAll > 0) {
 					this.changeChapter(-1);
 				} else {
 					prompt.showToast({ message: '已是第一章' });
 					this.isAtChapterStart = true;
+					this.updateNostalgicProgress();
 				}
 				return;
 			}
-		} else {
-			let preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
-			if (preOffset > 0 && preOffset < this.pageHeigh) {
-				if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
-					this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0;
-					this.isAtChapterEnd = true;
-				} else {
-					let offset = this.nostalgicSavedOffset + READ_LEN;
-					showPre = true;
-					this.nostalgicPreViewShowFlag = false;
-					this.readNostalgicText(offset, (str) => {
-						this.nostalgicTextPre = str;
-						this.nostalgicPreViewShowFlag = true;
-						this.nostalgicOffsetTopPreview = preOffset;
-						this.nostalgicBoxAllHeightPreview = 0;
-					});
-				}
-			} else if (preOffset <= 0) {
-				if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
-					this.nostalgicOffsetTopNormal -= preOffset;
-					if (this.currentChapterIndexInAll < this.totalChapters - 1) {
-						this.changeChapter(1);
-					} else {
-						prompt.showToast({ message: '已是最后一章' });
-						this.isAtChapterEnd = true;
+
+			const prevOffset = Math.max(0, this.nostalgicSavedOffset - READ_LEN);
+			const carryOffset = this.nostalgicOffsetTopNormal;
+			this.wait = true;
+			this.readNostalgicText(prevOffset, (str) => {
+				this.nostalgicText = str;
+				this.nostalgicSavedOffset = prevOffset;
+				this.getNostalgicBoxHeight('box1', (h) => {
+					this.nostalgicBoxAllHeightNormal = h;
+					this.nostalgicOffsetTopNormal = carryOffset - this.nostalgicBoxAllHeightNormal;
+					if (prevOffset <= 0 && this.nostalgicOffsetTopNormal > 0) {
+						this.nostalgicOffsetTopNormal = 0;
+						this.nostalgicSavedOffset = 0;
 					}
-					return;
-				} else {
-					this.nostalgicOffsetTopNormal = preOffset;
-					this.nostalgicPreViewShowFlag = false;
-					this.nostalgicText = this.nostalgicTextPre;
-					this.nostalgicSavedOffset = this.nostalgicSavedOffset + READ_LEN;
-					this.nostalgicBoxAllHeightNormal = this.nostalgicBoxAllHeightPreview;
-					this.isAtChapterStart = false;
-				}
-			}
+					this.wait = false;
+					this.resetNostalgicPageOffset();
+				});
+			});
+			return;
 		}
 
-		if (!showPre) {
-			this.nostalgicPreViewShowFlag = false;
+		const remain = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
+		if (remain > 0) {
+			if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
+				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0;
+			}
+			this.updateNostalgicProgress();
+			return;
 		}
-		
-		this.updateNostalgicProgress();
+
+		if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
+			this.nostalgicOffsetTopNormal -= remain;
+			if (this.currentChapterIndexInAll < this.totalChapters - 1) {
+				this.changeChapter(1);
+			} else {
+				prompt.showToast({ message: '已是最后一章' });
+				this.isAtChapterEnd = true;
+				this.updateNostalgicProgress();
+			}
+			return;
+		}
+
+		const nextOffset = this.nostalgicSavedOffset + READ_LEN;
+		const carryOffset = remain <= -this.pageHeigh ? (remain + this.pageHeigh) : 0;
+		this.wait = true;
+		this.readNostalgicText(nextOffset, (str) => {
+			this.nostalgicText = str;
+			this.nostalgicSavedOffset = nextOffset;
+			this.getNostalgicBoxHeight('box1', (h) => {
+				this.nostalgicBoxAllHeightNormal = h;
+				this.nostalgicOffsetTopNormal = carryOffset;
+				this.wait = false;
+				this.resetNostalgicPageOffset();
+			});
+		});
 	},
 
 	updateNostalgicProgress() {
