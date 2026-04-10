@@ -160,15 +160,14 @@ export default {
     if (this.longPressTriggered) {
       return;
     }
-    
+
     try {
       let progress = await bookStorage.get(this.name);
       progress.chapterIndex = chapter.index;
       progress.offsetInChapter = 0;
       progress.scrollOffset = 0;
       await bookStorage.set(this.name, progress);
-      progress = null;
-      
+
       globalThis.justJumpedFromChapter = true;
       globalThis.newChapterIndex = chapter.index;
       globalThis.newChapterName = chapter.name;
