@@ -1345,24 +1345,25 @@ export default {
 				this.showSetting = !this.showSetting;
 				return;
 			}
-            
-            const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
 
 			if (this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') {
-                if (this.swipeSideClickEnabled) {
-                    if (clickX < 432 / 3) {
-                        this.turnNostalgicPage(-1);
-                    } else if (clickX > 432 * 2 / 3) {
-                        this.turnNostalgicPage(1);
-                    } else {
-                        this.showSetting = !this.showSetting;
-                    }
-                } else {
-                    this.showSetting = !this.showSetting;
-                }
+				if (this.swipeSideClickEnabled) {
+					const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
+					if (clickX < 432 / 3) {
+						this.turnNostalgicPage(-1);
+					} else if (clickX > 432 * 2 / 3) {
+						this.turnNostalgicPage(1);
+					} else {
+						this.showSetting = !this.showSetting;
+					}
+				} else {
+					this.showSetting = !this.showSetting;
+				}
 			} else {
 				const isTopBottom = this.nostalgicPageTurnMode === 'topBottomClick';
-				const clickPos = isTopBottom ? (evt.offsetY || (evt.detail && evt.detail.y) || 0) : clickX;
+				const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
+				const clickY = evt.offsetY || (evt.detail && evt.detail.y) || 0;
+				const clickPos = isTopBottom ? clickY : clickX;
 				const dim = isTopBottom ? 514 : 432;
 				if (clickPos < dim / 3) this.turnNostalgicPage(-1);
 				else if (clickPos > dim * 2 / 3) this.turnNostalgicPage(1);
