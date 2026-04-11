@@ -1049,10 +1049,30 @@ export default {
 				if (!data.buffer || data.buffer.byteLength === 0) { cb(''); return; }
 				try {
 					const buffer = new Uint8Array(data.buffer);
+					let bytesToUse = buffer.length;
+
+					if (readOffset === 0) {
+						let prefix = "";
+						if (this.chapterStartEmptyLines) prefix += "\n\n\n";
+						if (this.chapterStartNumber) prefix += `第 ${this.currentChapterIndexInAll + 1} / ${this.totalChapters} 章\n`;
+						if (this.chapterStartName) prefix += `${this.currentChapterName}\n`;
+						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`;
+						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n";
+
+						const prefixCharCount = prefix.length;
+						const prefixByteCount = prefixCharCount * 2;
+
+						if (prefixByteCount > 0 && (readOffset + buffer.length) < this.allSize) {
+							bytesToUse = Math.max(0, buffer.length - prefixByteCount);
+							bytesToUse = bytesToUse - (bytesToUse % 2);
+						}
+					}
+
 					let str = "";
-					for (let i = 0; i < buffer.length; i += 2) {
+					for (let i = 0; i < bytesToUse; i += 2) {
 						str += String.fromCharCode(buffer[i + 1] * 256 + buffer[i]);
 					}
+
 					let prefix = "";
 					if (readOffset === 0) {
 						if (this.chapterStartEmptyLines) prefix += "\n\n\n";
