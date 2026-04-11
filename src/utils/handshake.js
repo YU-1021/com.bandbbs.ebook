@@ -36,7 +36,7 @@ export default class InterHandshake extends interconn {
                         action: 'versionError',
                         title: '版本不兼容',
                         confirmText: '手机端版本过低',
-                        subText: `当前版本：${currentVersion}\n所需版本：${MIN_PHONE_VERSION_NAME}\n请升级手机端后再使用本小程序`,
+                        subText: `所需版本：${MIN_PHONE_VERSION_NAME}\n前往官网 vb.luoxe.cn 下载最新版`,
                     }
                 });
             }
