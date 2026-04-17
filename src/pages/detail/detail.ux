@@ -1,6 +1,21 @@
 <template>
 	<div class="page">
-		<scroll id="scrollId" if="{{readMode !== 'nostalgic'}}" style="position: absolute; width: 432px; height: {{scrollHeight}}px; top: {{verticalMargin}}px;" scroll-y="{{true}}" scroll-top="{{scrollTopValue}}" @scroll="onScroll" @scrolltop="onScrollTop" @scrollbottom="onScrollBottom" @click="onTxtClick" onlongpress="onTxtLongPress" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}">
+		<scroll
+			id="scrollId"
+			if="{{readMode !== 'nostalgic'}}"
+			style="position: absolute; width: 432px; height: {{scrollHeight}}px; top: {{verticalMargin}}px;"
+			scroll-y="{{true}}"
+			scroll-top="{{scrollTopValue}}"
+			@scroll="onScroll"
+			@scrolltop="onScrollTop"
+			@scrollbottom="onScrollBottom"
+			@click="onTxtClick"
+			onlongpress="onTxtLongPress"
+			@touchstart="onTouchStart"
+			@touchmove="onTouchMove"
+			@touchend="onTouchEnd"
+			bounces="{{(isAtChapterStart || isAtChapterEnd) && (chapterSwitchStyle == 'boundary')}}"
+		>
 			<div id="contentContainer" style="position: absolute; width:432px; flex-direction: column;">
 				<div if="{{chapterSwitchStyle == 'button' && currentChapterIndexInAll > 0}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onPrevChapterClick">
 					<text static style="color: #aaa; font-size: 28px; font-weight: bold;">上一章</text>
@@ -14,10 +29,10 @@
 					<text if="{{chapterStartWordCount && (!page1 || page1.offset !== 0)}}" style="width: 432px; text-align: center; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">- 滑到顶部以加载上一段 -</text>
 				</div>
 				<div id="page1" style="flex-direction: column; width: 100%; flex-shrink: 0;">
-					<text style="width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px; ">{{ page1.text }}</text>
+					<text style="width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page1.text}}</text>
 				</div>
 				<div id="page2" if="{{page2}}" style="flex-direction: column; width: 100%; flex-shrink: 0;">
-					<text style="width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px; ">{{ page2.text }}</text>
+					<text style="width: 432px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page2.text}}</text>
 				</div>
 				<div if="{{chapterSwitchStyle == 'button' && isAtChapterEnd && currentChapterIndexInAll < totalChapters - 1}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onNextChapterClick">
 					<text static style="color: #aaa; font-size: 28px; font-weight: bold;">下一章</text>
@@ -137,6 +152,7 @@ export default {
 		isProcessingClick: false,
 		autoReadDistance: 100,
 		contentHeight: 0,
+		contentHeightCacheKey: '',
 		preventParagraphSplitting: false,
 		saveMode: 'exit',
 		saveIntervalValue: 10,
@@ -179,7 +195,12 @@ export default {
 		_fromPercent: false,
 		_percentOffsetInChapter: null,
 		_percentTargetPercent: null,
-		isChangingChapter: false
+		isChangingChapter: false,
+		_scrollTimer: null,
+		_scrollUpdateScheduled: false,
+		_lastCalcTime: 0,
+		loadingBookToken: 0,
+		nostalgicHeightCacheKey: ''
 	},
 	protected: {
 		name: '',
@@ -188,90 +209,167 @@ export default {
 	},
 
 	updateStatus() {
-		const date = new Date();
-		let hours = date.getHours();
-		let minutes = date.getMinutes();
+		const date = new Date()
+		let hours = date.getHours()
+		let minutes = date.getMinutes()
 		if (this.timeFormat === '12h') {
-			let ampm = hours >= 12 ? '下午' : '上午';
-			hours = hours % 12;
-			hours = hours ? hours : 12;
-			minutes = minutes < 10 ? '0' + minutes : minutes;
-			this.nowTime = `${ampm} ${hours}:${minutes}`;
+			const ampm = hours >= 12 ? '下午' : '上午'
+			hours = hours % 12
+			hours = hours ? hours : 12
+			minutes = minutes < 10 ? '0' + minutes : minutes
+			this.nowTime = `${ampm} ${hours}:${minutes}`
 		} else {
-			hours = hours < 10 ? '0' + hours : hours;
-			minutes = minutes < 10 ? '0' + minutes : minutes;
-			this.nowTime = `${hours}:${minutes}`;
+			hours = hours < 10 ? '0' + hours : hours
+			minutes = minutes < 10 ? '0' + minutes : minutes
+			this.nowTime = `${hours}:${minutes}`
 		}
 
-		this.timeCounter++;
+		this.timeCounter++
 		if (this.timeCounter >= 6 || this.batteryLevel === "") {
-			this.timeCounter = 0;
+			this.timeCounter = 0
 			try {
 				battery.getStatus({
 					success: (data) => {
-						let level = Math.round(data.level * 100);
-						this.batteryLevel = data.charging ? `充电中 ${level}%` : `电量 ${level}%`;
+						const level = Math.round(data.level * 100)
+						this.batteryLevel = data.charging ? `充电中 ${level}%` : `电量 ${level}%`
 					}
-				});
-			} catch (e) { }
+				})
+			} catch (e) {}
+		}
+	},
+
+	updatePageDisplay() {
+		this.currentPage = this.currentChapterIndexInAll + 1
+		this.totalPages = this.totalChapters
+	},
+
+	resetTransientFlags() {
+		this._shouldScrollToTop = false
+		this._fromBookmark = false
+		this._bookmarkOffsetInChapter = null
+		this._bookmarkScrollOffset = null
+		this._fromPercent = false
+		this._percentOffsetInChapter = null
+		this._percentTargetPercent = null
+		this.loadingNext = false
+		this.loadingPrev = false
+		this.isChangingChapter = false
+	},
+
+	clearTimers() {
+		if (this.periodicSaveTimer) { clearInterval(this.periodicSaveTimer); this.periodicSaveTimer = null }
+		if (this.readingTimeSaveTimer) { clearInterval(this.readingTimeSaveTimer); this.readingTimeSaveTimer = null }
+		if (this.autoInterval) { clearInterval(this.autoInterval); this.autoInterval = null }
+		if (this.timer) { clearInterval(this.timer); this.timer = null }
+		if (this.clickTimeout) { clearTimeout(this.clickTimeout); this.clickTimeout = null }
+		if (this.gestureClickTimeout) { clearTimeout(this.gestureClickTimeout); this.gestureClickTimeout = null }
+		if (this.longPressTimeout) { clearTimeout(this.longPressTimeout); this.longPressTimeout = null }
+		if (this._scrollTimer) { clearTimeout(this._scrollTimer); this._scrollTimer = null }
+		this._scrollUpdateScheduled = false
+	},
+
+	estimateCharsPerLine() {
+		return Math.max(1, Math.floor(432 / (this.fontSize * 0.6)))
+	},
+
+	estimateTextHeightByText(text) {
+		if (!text) return 0
+		const charsPerLine = this.estimateCharsPerLine()
+		const lines = Math.ceil(text.length / charsPerLine)
+		return Math.max(this.lineHeight, lines * this.lineHeight)
+	},
+
+	estimateScrollTopByOffset(offset) {
+		const charsPerLine = this.estimateCharsPerLine()
+		const charsBefore = Math.max(0, offset / 2)
+		const lines = Math.ceil(charsBefore / charsPerLine)
+		return Math.max(0, lines * this.lineHeight)
+	},
+
+	scheduleScrollUpdate() {
+		if (this._scrollUpdateScheduled) return
+		this._scrollUpdateScheduled = true
+		setTimeout(() => {
+			this._scrollUpdateScheduled = false
+			this.calculateDisplayProgress()
+			this.updateScrollDerivedFlags()
+		}, 80)
+	},
+
+	updateScrollDerivedFlags() {
+		const isStart = this.currentFileOffset === 0 && this.currentScrollTop < 10
+		if (this.isAtChapterStart !== isStart) this.isAtChapterStart = isStart
+
+		const isNearTop = this.currentFileOffset === 0 && this.currentScrollTop < this.alwaysShowTimeSensitivity
+		if (this.isNearTopForHd !== isNearTop) this.isNearTopForHd = isNearTop
+
+		if (this.contentHeight > this.scrollHeight) {
+			const threshold = this.auto ? 40 : this.chapterSwitchSensitivity
+			if (this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)) {
+				const lastSeg = this.page2 || this.page1
+				if ((lastSeg.offset + lastSeg.length) >= this.allSize) {
+					if (!this.isAtChapterEnd) this.isAtChapterEnd = true
+				}
+			}
 		}
 	},
 
 	onInit() {
-		this.updateStatus();
-		this.timer = setInterval(() => { this.updateStatus(); }, 10000);
-		globalThis.isKeepScreenOn = this.isKeepScreenOn;
-		global.runGC();
+		this.updateStatus()
+		this.timer = setInterval(() => { this.updateStatus() }, 10000)
+		globalThis.isKeepScreenOn = this.isKeepScreenOn
+		global.runGC()
 	},
 
 	async onShow() {
 		if (!this.timer) {
-			this.updateStatus();
-			this.timer = setInterval(() => { this.updateStatus(); }, 10000);
+			this.updateStatus()
+			this.timer = setInterval(() => { this.updateStatus() }, 10000)
 		}
-		await this.loadSettings();
-		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize);
+		await this.loadSettings()
+
+		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize)
+
 		if (typeof globalThis.isKeepScreenOn !== 'undefined') {
-			const newKeepScreenOn = !!globalThis.isKeepScreenOn;
-			const keepScreenOnChanged = this.isKeepScreenOn !== newKeepScreenOn;
-			this.isKeepScreenOn = newKeepScreenOn;
-			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
+			const newKeepScreenOn = !!globalThis.isKeepScreenOn
+			const keepScreenOnChanged = this.isKeepScreenOn !== newKeepScreenOn
+			this.isKeepScreenOn = newKeepScreenOn
+			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn })
 			if (keepScreenOnChanged) {
-				prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' });
+				prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' })
 			}
 		} else {
-			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
+			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn })
 		}
-		storage.get({ key: 'EBOOK_TEACHER_SCREEN_ENABLED', success: (data) => { this.teacherScreenEnabled = data === 'true'; } });
-		
-		const isChapterJump = globalThis.justJumpedFromChapter || globalThis.justJumpedFromBookmark || globalThis.justJumpedFromPageNumber || globalThis.justJumpedFromPercent;
+
+		storage.get({ key: 'EBOOK_TEACHER_SCREEN_ENABLED', success: (data) => { this.teacherScreenEnabled = data === 'true'; } })
+
+		const isChapterJump = globalThis.justJumpedFromChapter || globalThis.justJumpedFromBookmark || globalThis.justJumpedFromPageNumber || globalThis.justJumpedFromPercent
 		if (!this.isInitialized || isChapterJump || settingsChanged) {
 			if (globalThis.justJumpedFromChapter) {
-				this.chapterIndex = globalThis.newChapterIndex;
-				this.chapterName = globalThis.newChapterName;
-				delete globalThis.newChapterIndex;
-				delete globalThis.newChapterName;
+				this.chapterIndex = globalThis.newChapterIndex
+				this.chapterName = globalThis.newChapterName
+				delete globalThis.newChapterIndex
+				delete globalThis.newChapterName
 			}
-			await this.loadBook();
-			this.isInitialized = true;
-			this.lastTxtSizePage = this.txtSizePage;
-			this.lastFontSize = this.fontSize;
+			await this.loadBook()
+			this.isInitialized = true
+			this.lastTxtSizePage = this.txtSizePage
+			this.lastFontSize = this.fontSize
 		}
-		if (isChapterJump) {
-			this.showSetting = false;
-		}
-		
-		if (this.name) try { await readingTimeStorage.recordReadingStart(this.name); } catch (e) { }
+		if (isChapterJump) this.showSetting = false
+
 		if (this.readingTimeSaveTimer) {
-			clearInterval(this.readingTimeSaveTimer);
-			this.readingTimeSaveTimer = null;
+			clearInterval(this.readingTimeSaveTimer)
+			this.readingTimeSaveTimer = null
 		}
 		this.readingTimeSaveTimer = setInterval(async () => {
 			if (this.name) {
-				try { await readingTimeStorage.saveCurrentSession(this.name); } catch (e) { }
+				try { await readingTimeStorage.saveCurrentSession(this.name) } catch (e) {}
 			}
-		}, 5 * 60 * 1000);
-		this.setupAutoSave();
+		}, 5 * 60 * 1000)
+
+		this.setupAutoSave()
 	},
 
 	async loadSettings() {
@@ -285,7 +383,8 @@ export default {
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED', 'EBOOK_NOSTALGIC_PAGE_TURN_MODE',
 			'EBOOK_BOLD_ENABLED', 'EBOOK_CHAPTER_START_EMPTY_LINES', 'EBOOK_CHAPTER_START_NUMBER', 'EBOOK_CHAPTER_START_NAME',
 			'EBOOK_CHAPTER_START_WORD_COUNT', 'EBOOK_CHAPTER_SWITCH_SHOW_INFO', 'EBOOK_SWIPE_SIDE_CLICK_ENABLED'
-		];
+		]
+
 		const defaults = {
 			'EBOOK_TXTSZPAGE': 800, 'EBOOK_VERTICAL_MARGIN': 10, 'EBOOK_FONT': 30, 'EBOOK_OPACITY': 100, 'EBOOK_SWIPE': 'column',
 			'EBOOK_AUTO': null, 'EBOOK_SHOW_PROGRESS_BAR': true, 'EBOOK_PROGRESS_BAR_HEIGHT': 8, 'EBOOK_SHOW_PROGRESS_BAR_PERCENT': false,
@@ -296,7 +395,8 @@ export default {
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED': false, 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': false, 'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'topBottomClick',
 			'EBOOK_BOLD_ENABLED': true, 'EBOOK_CHAPTER_START_EMPTY_LINES': false, 'EBOOK_CHAPTER_START_NUMBER': false, 'EBOOK_CHAPTER_START_NAME': false,
 			'EBOOK_CHAPTER_START_WORD_COUNT': false, 'EBOOK_CHAPTER_SWITCH_SHOW_INFO': false, 'EBOOK_SWIPE_SIDE_CLICK_ENABLED': false
-		};
+		}
+
 		const mapping = {
 			'EBOOK_TXTSZPAGE': 'txtSizePage', 'EBOOK_VERTICAL_MARGIN': 'verticalMargin', 'EBOOK_FONT': 'fontSize', 'EBOOK_OPACITY': 'opacity',
 			'EBOOK_SWIPE': 'swipe', 'EBOOK_AUTO': 'auto', 'EBOOK_SHOW_PROGRESS_BAR': 'showProgressBar', 'EBOOK_PROGRESS_BAR_HEIGHT': 'progressBarHeight',
@@ -309,1203 +409,1288 @@ export default {
 			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
 			'EBOOK_CHAPTER_START_NUMBER': 'chapterStartNumber', 'EBOOK_CHAPTER_START_NAME': 'chapterStartName', 'EBOOK_CHAPTER_START_WORD_COUNT': 'chapterStartWordCount',
 			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo', 'EBOOK_SWIPE_SIDE_CLICK_ENABLED': 'swipeSideClickEnabled'
-		};
+		}
 
 		const promises = keys.map(key => new Promise(resolve => {
-			storage.get({ key, success: data => resolve({ key, val: data }), fail: () => resolve({ key, val: null }) });
-		}));
-		const results = await Promise.all(promises);
-		results.forEach(({ key, val }) => {
-			const prop = mapping[key];
-			const defaultValue = defaults[key];
-			if (val === null || val === '') this[prop] = defaultValue;
-			else if (key === 'EBOOK_AUTO') {
-				const parsed = typeof val === 'string' ? JSON.parse(val) : val;
-				if (parsed && parsed.enable) this.auto = parsed.speed;
-			} else if (typeof defaultValue === 'number') this[prop] = parseInt(val);
-			else if (typeof defaultValue === 'boolean') this[prop] = val === 'true' || val === true;
-			else this[prop] = val;
-		});
+			storage.get({
+				key,
+				success: data => resolve({ key, val: data }),
+				fail: () => resolve({ key, val: null })
+			})
+		}))
+		const results = await Promise.all(promises)
 
-		this.lineHeight = parseInt((-0.01) * (this.fontSize ** 2) + 1.62 * this.fontSize - 3.23);
-		this.updateScrollHeight();
-		
+		results.forEach(({ key, val }) => {
+			const prop = mapping[key]
+			const defaultValue = defaults[key]
+			if (val === null || val === '') {
+				this[prop] = defaultValue
+			} else if (key === 'EBOOK_AUTO') {
+				try {
+					const parsed = typeof val === 'string' ? JSON.parse(val) : val
+					this.auto = (parsed && parsed.enable) ? parsed.speed : false
+				} catch (e) {
+					this.auto = false
+				}
+			} else if (typeof defaultValue === 'number') {
+				this[prop] = parseInt(val)
+			} else if (typeof defaultValue === 'boolean') {
+				this[prop] = val === 'true' || val === true
+			} else {
+				this[prop] = val
+			}
+		})
+
+		this.lineHeight = parseInt((-0.01) * (this.fontSize ** 2) + 1.62 * this.fontSize - 3.23)
+		this.updateScrollHeight()
+
 		if (this.readMode === 'nostalgic' && this.nostalgicText) {
 			this.getNostalgicBoxHeight('box1', (h) => {
-				this.nostalgicBoxAllHeightNormal = h;
-				this.resetNostalgicPageOffset();
-			});
+				this.nostalgicBoxAllHeightNormal = h
+				this.resetNostalgicPageOffset()
+			})
 		}
 	},
 
 	setupAutoSave() {
-		if (this.periodicSaveTimer) { clearInterval(this.periodicSaveTimer); this.periodicSaveTimer = null; }
+		if (this.periodicSaveTimer) { clearInterval(this.periodicSaveTimer); this.periodicSaveTimer = null }
 		if (this.saveMode === 'periodic' && this.saveIntervalValue > 0) {
-			this.periodicSaveTimer = setInterval(() => { this._performSave(); }, this.saveIntervalValue * 1000);
+			this.periodicSaveTimer = setInterval(() => { this._performSave() }, this.saveIntervalValue * 1000)
 		}
 	},
 
-	updateContentHeight() { 
-		setTimeout(() => { 
-			this.$element("contentContainer").getBoundingClientRect({ 
-				success: (rect) => { this.contentHeight = rect.height; } 
-			}); 
-		}, 50); 
+	updateContentHeight(force = false) {
+		const cacheKey = [
+			this.currentChapterIndexInAll,
+			this.fontSize,
+			this.lineHeight,
+			this.txtSizePage,
+			this.page1 ? this.page1.offset : -1,
+			this.page1 ? this.page1.length : -1,
+			this.page2 ? this.page2.offset : -1,
+			this.page2 ? this.page2.length : -1,
+			this.readMode
+		].join('|')
+
+		if (!force && this.contentHeightCacheKey === cacheKey && this.contentHeight > 0) return
+		this.contentHeightCacheKey = cacheKey
+
+		setTimeout(() => {
+			const el = this.$element("contentContainer")
+			if (!el) return
+			el.getBoundingClientRect({
+				success: (rect) => { this.contentHeight = rect.height }
+			})
+		}, 50)
 	},
 
-	updateScrollHeight() { 
-		this.scrollHeight = 514 - this.verticalMargin * 2;
-		this.pageHeigh = Math.floor(this.scrollHeight / this.lineHeight) * this.lineHeight; 
-		this.nostalgicTop = this.verticalMargin + Math.floor((this.scrollHeight - this.pageHeigh) / 2);
-	},
-
-	updatePageNumber() {
-		this.currentPage = this.currentChapterIndexInAll + 1;
-		this.totalPages = this.totalChapters;
+	updateScrollHeight() {
+		this.scrollHeight = 514 - this.verticalMargin * 2
+		this.pageHeigh = Math.floor(this.scrollHeight / this.lineHeight) * this.lineHeight
+		this.nostalgicTop = this.verticalMargin + Math.floor((this.scrollHeight - this.pageHeigh) / 2)
 	},
 
 	calculateDisplayProgress() {
-		if (!this.showProgressBar) { 
-			if (this.displayProgress !== 0) this.displayProgress = 0; 
-			return; 
+		if (!this.showProgressBar) {
+			if (this.displayProgress !== 0) this.displayProgress = 0
+			return
 		}
-		if (this.isAtChapterEnd) { 
-			if (this.displayProgress !== 100) this.displayProgress = 100; 
-			return; 
+		if (this.isAtChapterEnd) {
+			if (this.displayProgress !== 100) this.displayProgress = 100
+			return
 		}
-		let prog = 0;
+
+		let prog = 0
 		if (this.readMode === 'nostalgic') {
 			if (this.allSize > 0) {
-				const READ_LEN = this.txtSizePage * 2;
-				let bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1);
-				let scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0);
-				prog = (scrolled / this.allSize) * 100;
+				const READ_LEN = this.txtSizePage * 2
+				const bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1)
+				const scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0)
+				prog = (scrolled / this.allSize) * 100
 			}
 		} else {
 			if (this.allSize > 0) {
-				let totalScrolled = this.currentFileOffset;
+				let totalScrolled = this.currentFileOffset
 				if (this.contentHeight > 0) {
-					const bytesPerPixel = (this.page1.length + (this.page2 ? this.page2.length : 0)) / this.contentHeight;
-					totalScrolled += this.currentScrollTop * bytesPerPixel;
+					const bytesPerPixel = (this.page1.length + (this.page2 ? this.page2.length : 0)) / this.contentHeight
+					totalScrolled += this.currentScrollTop * bytesPerPixel
 				}
-				prog = (totalScrolled / this.allSize) * 100;
+				prog = (totalScrolled / this.allSize) * 100
 			}
 		}
 
-		let newProg = Math.min(100, Math.max(0, prog));
-		newProg = Math.round(newProg * 10) / 10;
-		if (this.displayProgress !== newProg) {
-			this.displayProgress = newProg;
-		}
+		let newProg = Math.min(100, Math.max(0, prog))
+		newProg = Math.round(newProg * 10) / 10
+		if (this.displayProgress !== newProg) this.displayProgress = newProg
 	},
 
 	async loadBook() {
 		try {
-			const version = await chapterManager.checkVersion(this.name);
-			if (version === 'old') return await chapterManager.handleOldVersion(this.name);
-			if (version === 'none') { this.page1 = { text: "本书没有内容", offset: 0, length: 0 }; return; }
-			this.totalChapters = await chapterManager.getTotalChapters(this.name);
-		} catch (e) { prompt.showToast({ message: '章节列表加载失败' }); this.totalChapters = 0; return; }
-		if (this.totalChapters === 0) { this.page1 = { text: "本书没有内容", offset: 0, length: 0 }; return; }
+			const version = await chapterManager.checkVersion(this.name)
+			if (version === 'old') return await chapterManager.handleOldVersion(this.name)
+			if (version === 'none') {
+				this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
+				return
+			}
+			this.totalChapters = await chapterManager.getTotalChapters(this.name)
+		} catch (e) {
+			prompt.showToast({ message: '章节列表加载失败' })
+			this.totalChapters = 0
+			return
+		}
+		if (this.totalChapters === 0) {
+			this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
+			return
+		}
 
-		let progress = await bookStorage.get(this.name);
-		let chapterToLoadIndex = 0;
-		let offsetInChapter = 0;
-		let scrollOffset = 0;
-		let shouldScrollToTop = false;
+		let progress = await bookStorage.get(this.name)
+		let chapterToLoadIndex = 0
+		let offsetInChapter = 0
+		let scrollOffset = 0
+		let shouldScrollToTop = false
 
 		if (globalThis.justJumpedFromChapter) {
-			chapterToLoadIndex = this.chapterIndex;
-			this.currentChapterName = this.chapterName;
-			shouldScrollToTop = true;
-			globalThis.justJumpedFromChapter = false;
+			chapterToLoadIndex = this.chapterIndex
+			this.currentChapterName = this.chapterName
+			shouldScrollToTop = true
+			globalThis.justJumpedFromChapter = false
 		} else if (globalThis.justJumpedFromPageNumber) {
-			chapterToLoadIndex = globalThis.justJumpedChapterIndex !== undefined ? globalThis.justJumpedChapterIndex : progress.chapterIndex;
-			shouldScrollToTop = true;
-			globalThis.justJumpedFromPageNumber = false;
-			delete globalThis.justJumpedChapterIndex;
+			chapterToLoadIndex = globalThis.justJumpedChapterIndex !== undefined ? globalThis.justJumpedChapterIndex : progress.chapterIndex
+			shouldScrollToTop = true
+			globalThis.justJumpedFromPageNumber = false
+			delete globalThis.justJumpedChapterIndex
 		} else if (globalThis.justJumpedFromPercent) {
-			this._fromPercent = true;
-			chapterToLoadIndex = globalThis.justJumpedChapterIndex !== undefined ? globalThis.justJumpedChapterIndex : progress.chapterIndex;
-			offsetInChapter = globalThis.justJumpedOffsetInChapter || 0;
-			this._percentOffsetInChapter = offsetInChapter;
-			this._percentTargetPercent = globalThis.justJumpedTargetPercent;
-			globalThis.justJumpedFromPercent = false;
-			delete globalThis.justJumpedChapterIndex;
-			delete globalThis.justJumpedOffsetInChapter;
-			delete globalThis.justJumpedTargetPercent;
+			this._fromPercent = true
+			chapterToLoadIndex = globalThis.justJumpedChapterIndex !== undefined ? globalThis.justJumpedChapterIndex : progress.chapterIndex
+			offsetInChapter = globalThis.justJumpedOffsetInChapter || 0
+			this._percentOffsetInChapter = offsetInChapter
+			this._percentTargetPercent = globalThis.justJumpedTargetPercent
+			globalThis.justJumpedFromPercent = false
+			delete globalThis.justJumpedChapterIndex
+			delete globalThis.justJumpedOffsetInChapter
+			delete globalThis.justJumpedTargetPercent
 		} else if (globalThis.justJumpedFromBookmark) {
-			chapterToLoadIndex = globalThis.justJumpedBookmarkChapterIndex !== undefined ? globalThis.justJumpedBookmarkChapterIndex : progress.chapterIndex;
-			offsetInChapter = progress.offsetInChapter || 0;
-			scrollOffset = progress.scrollOffset || 0;
-			this._fromBookmark = true;
-			this._bookmarkOffsetInChapter = offsetInChapter;
-			this._bookmarkScrollOffset = scrollOffset;
-			globalThis.justJumpedFromBookmark = false;
-			delete globalThis.justJumpedBookmarkChapterIndex;
+			chapterToLoadIndex = globalThis.justJumpedBookmarkChapterIndex !== undefined ? globalThis.justJumpedBookmarkChapterIndex : progress.chapterIndex
+			offsetInChapter = progress.offsetInChapter || 0
+			scrollOffset = progress.scrollOffset || 0
+			this._fromBookmark = true
+			this._bookmarkOffsetInChapter = offsetInChapter
+			this._bookmarkScrollOffset = scrollOffset
+			globalThis.justJumpedFromBookmark = false
+			delete globalThis.justJumpedBookmarkChapterIndex
 		} else if (progress.chapterIndex !== null) {
-			chapterToLoadIndex = progress.chapterIndex;
-			offsetInChapter = progress.offsetInChapter || 0;
-			scrollOffset = progress.scrollOffset || 0;
+			chapterToLoadIndex = progress.chapterIndex
+			offsetInChapter = progress.offsetInChapter || 0
+			scrollOffset = progress.scrollOffset || 0
 		}
 
 		if (chapterToLoadIndex === null || chapterToLoadIndex === undefined) {
-			const available = await chapterManager.getAllAvailableChapters(this.name);
-			if (available.length > 0) chapterToLoadIndex = available[0].index;
-			else { this.page1 = { text: "本书没有内容", offset: 0, length: 0 }; return; }
+			const available = await chapterManager.getAllAvailableChapters(this.name)
+			if (available.length > 0) chapterToLoadIndex = available[0].index
+			else {
+				this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
+				return
+			}
 		}
 
-		const oldTxtSizePage = progress.txtSizePage || this.txtSizePage;
-		const oldFontSize = progress.fontSize || this.fontSize;
+		const oldTxtSizePage = progress.txtSizePage || this.txtSizePage
+		const oldFontSize = progress.fontSize || this.fontSize
 		if (oldTxtSizePage !== this.txtSizePage || oldFontSize !== this.fontSize) {
-			const fontSizeRatio = oldFontSize > 0 ? this.fontSize / oldFontSize : 1;
-			const txtSizePageRatio = oldTxtSizePage > 0 ? this.txtSizePage / oldTxtSizePage : 1;
-			if (txtSizePageRatio !== 1 && offsetInChapter > 0) offsetInChapter = Math.floor(offsetInChapter * txtSizePageRatio);
-			if (fontSizeRatio !== 1 && scrollOffset > 0) scrollOffset = Math.floor(scrollOffset * fontSizeRatio);
+			const fontSizeRatio = oldFontSize > 0 ? this.fontSize / oldFontSize : 1
+			const txtSizePageRatio = oldTxtSizePage > 0 ? this.txtSizePage / oldTxtSizePage : 1
+			if (txtSizePageRatio !== 1 && offsetInChapter > 0) offsetInChapter = Math.floor(offsetInChapter * txtSizePageRatio)
+			if (fontSizeRatio !== 1 && scrollOffset > 0) scrollOffset = Math.floor(scrollOffset * fontSizeRatio)
 		}
 
-		if (chapterToLoadIndex < 0 || chapterToLoadIndex >= this.totalChapters) chapterToLoadIndex = 0;
-		this.currentFileOffset = offsetInChapter;
-		this.savedScrollOffset = scrollOffset;
-		this.scrollTopValue = Math.max(0, scrollOffset);
-		this.currentScrollTop = Math.max(0, scrollOffset);
-		this._shouldScrollToTop = shouldScrollToTop;
+		if (chapterToLoadIndex < 0 || chapterToLoadIndex >= this.totalChapters) chapterToLoadIndex = 0
+		this.currentFileOffset = offsetInChapter
+		this.savedScrollOffset = scrollOffset
+		this.scrollTopValue = Math.max(0, scrollOffset)
+		this.currentScrollTop = Math.max(0, scrollOffset)
+		this._shouldScrollToTop = shouldScrollToTop
 
 		this.loadChapter(chapterToLoadIndex, () => {
 			if (this.readMode === 'nostalgic') {
-				this.wait = false;
-				this.loadNostalgicChapter(offsetInChapter);
+				this.wait = false
+				this.loadNostalgicChapter(offsetInChapter)
 			} else {
-				this.loadInitialSegments();
-				this.isAtChapterStart = shouldScrollToTop || (this.currentFileOffset === 0 && this.savedScrollOffset < 10);
-				this.isNearTopForHd = this.currentFileOffset === 0 && this.savedScrollOffset < this.alwaysShowTimeSensitivity;
+				this.loadInitialSegments()
+				this.isAtChapterStart = shouldScrollToTop || (this.currentFileOffset === 0 && this.savedScrollOffset < 10)
+				this.isNearTopForHd = this.currentFileOffset === 0 && this.savedScrollOffset < this.alwaysShowTimeSensitivity
 			}
-		});
+		})
 	},
 
 	async loadChapter(chapterIdxInAll, callback) {
-		if (chapterIdxInAll < 0 || chapterIdxInAll >= this.totalChapters) { if (callback) callback(); return; }
-		const chapter = await chapterManager.getChapterByIndex(this.name, chapterIdxInAll);
-		if (!chapter) { prompt.showToast({ message: '无法加载章节信息' }); if (callback) callback(); return; }
+		if (chapterIdxInAll < 0 || chapterIdxInAll >= this.totalChapters) { if (callback) callback(); return }
+		const chapter = await chapterManager.getChapterByIndex(this.name, chapterIdxInAll)
+		if (!chapter) { prompt.showToast({ message: '无法加载章节信息' }); if (callback) callback(); return }
 
-		this.page1 = { text: "", offset: 0, length: 0 };
-		this.page2 = null;
-		this.isAtChapterStart = false;
-		this.isAtChapterEnd = false;
-		this.currentChapterIndexInAll = chapterIdxInAll;
-		this.currentChapterName = chapter.name;
-		this.currentChapterWordCount = chapter.wordCount || 0;
-		this.cPath = `internal://files/books/${this.name}/content/${chapter.index}.txt`;
+		this.page1 = { text: "", offset: 0, length: 0 }
+		this.page2 = null
+		this.isAtChapterStart = false
+		this.isAtChapterEnd = false
+		this.currentChapterIndexInAll = chapterIdxInAll
+		this.currentChapterName = chapter.name
+		this.currentChapterWordCount = chapter.wordCount || 0
+		this.cPath = `internal://files/books/${this.name}/content/${chapter.index}.txt`
 
 		if (this.chapterSwitchShowInfo) {
-			const prev = chapterIdxInAll > 0 ? await chapterManager.getChapterByIndex(this.name, chapterIdxInAll - 1) : null;
-			this.prevChapterName = prev ? prev.name : '';
-			const next = chapterIdxInAll < this.totalChapters - 1 ? await chapterManager.getChapterByIndex(this.name, chapterIdxInAll + 1) : null;
-			this.nextChapterName = next ? next.name : '';
+			const prev = chapterIdxInAll > 0 ? await chapterManager.getChapterByIndex(this.name, chapterIdxInAll - 1) : null
+			this.prevChapterName = prev ? prev.name : ''
+			const next = chapterIdxInAll < this.totalChapters - 1 ? await chapterManager.getChapterByIndex(this.name, chapterIdxInAll + 1) : null
+			this.nextChapterName = next ? next.name : ''
 		}
 
 		file.get({
 			uri: this.cPath,
 			success: (data) => {
-				this.allSize = data.length;
-				this.updatePageNumber();
-				if (callback) callback();
+				this.allSize = data.length
+				if (callback) callback()
 			},
 			fail: (d, code) => {
-				this.allSize = 0;
-				prompt.showToast({ message: code === 301 ? '文件不存在，请重新同步该章节' : `加载章节失败: ${code}` });
-				if (callback) callback();
+				this.allSize = 0
+				prompt.showToast({ message: code === 301 ? '文件不存在，请重新同步该章节' : `加载章节失败: ${code}` })
+				if (callback) callback()
 			}
-		});
+		})
 	},
 
 	loadInitialSegments() {
-		this.wait = true;
+		this.wait = true
 		this.readFileText(this.currentFileOffset, (str, bytesRead) => {
-			this.page1 = { text: str, offset: this.currentFileOffset, length: bytesRead };
-			this.loadNextSegmentNoScroll();
-			this.calculateDisplayProgress();
-			this.updateContentHeight();
-		});
+			this.page1 = { text: str, offset: this.currentFileOffset, length: bytesRead }
+			this.loadNextSegmentNoScroll()
+			this.calculateDisplayProgress()
+			this.updateContentHeight()
+		})
 	},
 
 	loadNextSegmentNoScroll() {
-		let newOffset = this.page1.offset + this.page1.length;
+		const newOffset = this.page1.offset + this.page1.length
 		if (newOffset >= this.allSize) {
-			this.isAtChapterEnd = true;
-			this.page2 = null;
-			this.restoreScrollPosition();
-			return;
+			this.isAtChapterEnd = true
+			this.page2 = null
+			this.restoreScrollPosition()
+			return
 		}
 		this.readFileText(newOffset, (str, bytesRead) => {
-			this.page2 = str ? { text: str, offset: newOffset, length: bytesRead } : null;
-			this.restoreScrollPosition();
-			this.updateContentHeight();
-		});
+			this.page2 = str ? { text: str, offset: newOffset, length: bytesRead } : null
+			this.restoreScrollPosition()
+			this.updateContentHeight()
+		})
 	},
 
 	restoreScrollPosition() {
 		setTimeout(() => {
 			if (this._shouldScrollToTop || (this.currentFileOffset === 0 && this.savedScrollOffset === 0)) {
-				this.scrollTopValue = 0;
-				this.currentScrollTop = 0;
-				this.currentFileOffset = 0;
-				this.savedScrollOffset = 0;
-				this.finalizeScrollRestore();
+				this.scrollTopValue = 0
+				this.currentScrollTop = 0
+				this.currentFileOffset = 0
+				this.savedScrollOffset = 0
+				this.finalizeScrollRestore()
 			} else {
 				const targetOffset = (this._fromBookmark && this._bookmarkOffsetInChapter > 0) ? this._bookmarkOffsetInChapter :
-					(this._fromPercent && this._percentOffsetInChapter > 0) ? this._percentOffsetInChapter : null;
+					(this._fromPercent && this._percentOffsetInChapter > 0) ? this._percentOffsetInChapter : null
 
 				const restore = (top) => {
-					this.scrollTopValue = Math.max(0, Math.floor(top));
-					this.currentScrollTop = Math.max(0, Math.floor(top));
-					this.finalizeScrollRestore();
-				};
+					this.scrollTopValue = Math.max(0, Math.floor(top))
+					this.currentScrollTop = Math.max(0, Math.floor(top))
+					this.finalizeScrollRestore()
+				}
 
 				if (targetOffset !== null && targetOffset > 0) {
 					this.$element("page1").getBoundingClientRect({
 						success: (page1Rect) => {
-							const p1Start = this.page1.offset;
-							const p1End = p1Start + this.page1.length;
-							
+							const p1Start = this.page1.offset
+							const p1End = p1Start + this.page1.length
+
 							if (this._fromPercent && this._percentTargetPercent !== null && this._percentTargetPercent !== undefined && this.allSize > 0) {
-								const targetPercentOffset = Math.floor((this._percentTargetPercent / 100) * this.allSize);
+								const targetPercentOffset = Math.floor((this._percentTargetPercent / 100) * this.allSize)
+								const charsPerLine = Math.max(1, Math.floor(432 / this.fontSize))
+
 								if (targetPercentOffset >= p1Start && targetPercentOffset < p1End) {
-									const charsIn = (targetPercentOffset - p1Start) / 2;
-									const charsPerLine = Math.floor(432 / this.fontSize);
-									const lines = charsPerLine > 0 ? Math.ceil(charsIn / charsPerLine) : 0;
-									restore(lines * this.lineHeight);
+									const charsIn = (targetPercentOffset - p1Start) / 2
+									const lines = Math.ceil(charsIn / charsPerLine)
+									restore(lines * this.lineHeight)
 								} else if (targetPercentOffset < p1Start) {
-									restore(0);
+									restore(0)
 								} else {
-									const charsBefore = targetPercentOffset / 2;
-									const charsPerLine = Math.floor(432 / this.fontSize);
-									const lines = charsPerLine > 0 ? Math.ceil(charsBefore / charsPerLine) : 0;
-									const estimatedScroll = lines * this.lineHeight;
+									const charsBefore = targetPercentOffset / 2
+									const lines = Math.ceil(charsBefore / charsPerLine)
+									const estimatedScroll = lines * this.lineHeight
 									if (this.page2 && this.page2.offset <= targetPercentOffset) {
 										this.$element("page2").getBoundingClientRect({
 											success: (page2Rect) => {
-												const p2Start = this.page2.offset;
+												const p2Start = this.page2.offset
 												if (targetPercentOffset >= p2Start && targetPercentOffset < p2Start + this.page2.length) {
-													const charsIn = (targetPercentOffset - p2Start) / 2;
-													const linesInP2 = charsPerLine > 0 ? Math.ceil(charsIn / charsPerLine) : 0;
-													restore(page1Rect.height + linesInP2 * this.lineHeight);
+													const charsIn = (targetPercentOffset - p2Start) / 2
+													const linesInP2 = Math.ceil(charsIn / charsPerLine)
+													restore(page1Rect.height + linesInP2 * this.lineHeight)
 												} else {
-													restore(estimatedScroll);
+													restore(estimatedScroll)
 												}
 											},
 											fail: () => restore(estimatedScroll)
-										});
+										})
 									} else {
-										restore(estimatedScroll);
+										restore(estimatedScroll)
 									}
 								}
 							} else if (targetOffset >= p1Start && targetOffset < p1End) {
-								const charsIn = (targetOffset - p1Start) / 2;
-								const lines = Math.ceil(charsIn / Math.floor(432 / (this.fontSize * 0.6)));
-								restore((lines * this.lineHeight) + Math.max(0, this.savedScrollOffset));
+								const charsIn = (targetOffset - p1Start) / 2
+								const lines = Math.ceil(charsIn / Math.max(1, Math.floor(432 / (this.fontSize * 0.6))))
+								restore((lines * this.lineHeight) + Math.max(0, this.savedScrollOffset))
 							} else if (targetOffset < p1Start) {
-								restore(Math.max(0, this.savedScrollOffset));
+								restore(Math.max(0, this.savedScrollOffset))
 							} else {
-								const charsBefore = targetOffset / 2;
-								const lines = Math.ceil(charsBefore / Math.floor(432 / (this.fontSize * 0.6)));
-								restore((lines * this.lineHeight) + Math.max(0, this.savedScrollOffset));
+								const charsBefore = targetOffset / 2
+								const lines = Math.ceil(charsBefore / Math.max(1, Math.floor(432 / (this.fontSize * 0.6))))
+								restore((lines * this.lineHeight) + Math.max(0, this.savedScrollOffset))
 							}
 						},
 						fail: () => restore(Math.max(0, this.savedScrollOffset))
-					});
-				} else restore(Math.max(0, this.savedScrollOffset));
+					})
+				} else restore(Math.max(0, this.savedScrollOffset))
 			}
-		}, 100);
+		}, 100)
 	},
 
 	finalizeScrollRestore() {
 		const timeoutId = setTimeout(() => {
-			this.wait = false;
-			this.isChangingChapter = false;
-		}, 500);
-		this.$element("contentContainer").getBoundingClientRect({
+			this.wait = false
+			this.isChangingChapter = false
+		}, 500)
+		const contentEl = this.$element("contentContainer")
+		if (!contentEl) {
+			clearTimeout(timeoutId)
+			this.wait = false
+			this.isChangingChapter = false
+			this._shouldScrollToTop = false
+			this._fromBookmark = false
+			this._bookmarkOffsetInChapter = null
+			this._bookmarkScrollOffset = null
+			this._fromPercent = false
+			this._percentOffsetInChapter = null
+			this._percentTargetPercent = null
+			return
+		}
+		contentEl.getBoundingClientRect({
 			success: (rect) => {
-				clearTimeout(timeoutId);
-				this.contentHeight = rect.height;
-				this.calculateDisplayProgress();
-				this.wait = false;
-				this.isChangingChapter = false;
-				this._shouldScrollToTop = false;
-				this._fromBookmark = false;
-				this._bookmarkOffsetInChapter = null;
-				this._bookmarkScrollOffset = null;
-				this._fromPercent = false;
-				this._percentOffsetInChapter = null;
-				this._percentTargetPercent = null;
-				this.saveData(true);
+				clearTimeout(timeoutId)
+				this.contentHeight = rect.height
+				this.calculateDisplayProgress()
+				this.wait = false
+				this.isChangingChapter = false
+				this._shouldScrollToTop = false
+				this._fromBookmark = false
+				this._bookmarkOffsetInChapter = null
+				this._bookmarkScrollOffset = null
+				this._fromPercent = false
+				this._percentOffsetInChapter = null
+				this._percentTargetPercent = null
+				this.saveData(true)
 			},
 			fail: () => {
-				clearTimeout(timeoutId);
-				this.wait = false;
-				this.isChangingChapter = false;
-				this._shouldScrollToTop = false;
-				this._fromBookmark = false;
-				this._bookmarkOffsetInChapter = null;
-				this._bookmarkScrollOffset = null;
-				this._fromPercent = false;
-				this._percentOffsetInChapter = null;
-				this._percentTargetPercent = null;
+				clearTimeout(timeoutId)
+				this.wait = false
+				this.isChangingChapter = false
+				this._shouldScrollToTop = false
+				this._fromBookmark = false
+				this._bookmarkOffsetInChapter = null
+				this._bookmarkScrollOffset = null
+				this._fromPercent = false
+				this._percentOffsetInChapter = null
+				this._percentTargetPercent = null
 			}
-		});
+		})
 	},
 
 	readFileText(readOffset, cb) {
-		if (readOffset >= this.allSize) { cb('', 0); return; }
+		if (readOffset >= this.allSize) { cb('', 0); return }
 
-		let length = this.txtSizePage * 2;
-		if (readOffset < 0) { length += readOffset; readOffset = 0; }
-		const maxLength = this.allSize - readOffset;
-		if (length > maxLength) length = maxLength;
+		let length = this.txtSizePage * 2
+		if (readOffset < 0) { length += readOffset; readOffset = 0 }
+		const maxLength = this.allSize - readOffset
+		if (length > maxLength) length = maxLength
 
-		const self = this;
+		const self = this
 		function attemptRead(len, attemptsLeft) {
 			file.readArrayBuffer({
 				uri: self.cPath, position: readOffset, length: len,
 				success: (data) => {
-					if (!data.buffer || data.buffer.byteLength === 0) { cb('', 0); return; }
+					if (!data.buffer || data.buffer.byteLength === 0) { cb('', 0); return }
 					try {
-						const buffer = new Uint8Array(data.buffer);
-						let bytesToUse = buffer.length;
+						const buffer = new Uint8Array(data.buffer)
+						let bytesToUse = buffer.length
 						
 						if (self.preventParagraphSplitting && (readOffset + buffer.length) < self.allSize) {
-							let lastNewlinePos = -1;
+							let lastNewlinePos = -1
 							for (let i = buffer.length - 2; i >= 0; i -= 2) {
-								const charCode = buffer[i + 1] * 256 + buffer[i];
+								const charCode = buffer[i + 1] * 256 + buffer[i]
 								if (charCode === 10) {
-									lastNewlinePos = i;
-									break;
+									lastNewlinePos = i
+									break
 								}
 							}
-							if (lastNewlinePos >= 0) {
-								bytesToUse = lastNewlinePos + 2;
-							}
+							if (lastNewlinePos >= 0) bytesToUse = lastNewlinePos + 2
 						}
 						
-						let str = "";
+						let str = ""
 						for (let i = 0; i < bytesToUse; i += 2) {
-							str += String.fromCharCode(buffer[i + 1] * 256 + buffer[i]);
+							str += String.fromCharCode(buffer[i + 1] * 256 + buffer[i])
 						}
-						cb(str, bytesToUse);
-					} catch (e) { cb('', 0); }
+						cb(str, bytesToUse)
+					} catch (e) { cb('', 0) }
 				},
 				fail: (d, code) => {
-					if (attemptsLeft > 0) attemptRead(Math.max(256, Math.floor(len / 2)), attemptsLeft - 1);
-					else {
-						if (code === 301) prompt.showToast({ message: '文件不存在，请重新同步该章节' });
-						else prompt.showToast({ message: '读取章节失败' });
-						cb('', 0);
-					}
+					if (attemptsLeft > 0) attemptRead(Math.max(256, Math.floor(len / 2)), attemptsLeft - 1)
+					else cb('', 0)
 				}
-			});
+			})
 		}
-		attemptRead(length, 3);
+		attemptRead(length, 3)
 	},
 
 	onScroll(e) {
-		if (this.wait) return;
+		if (this.wait) return
 		if (this.isAtChapterEnd && e.scrollY < this.currentScrollTop) {
-			this.isAtChapterEnd = false;
+			this.isAtChapterEnd = false
 		}
-		this.currentScrollTop = e.scrollY;
-
-		const now = Date.now();
-		if (!this._lastCalcTime || now - this._lastCalcTime > 100) {
-			this.calculateDisplayProgress();
-			this._lastCalcTime = now;
-		} else {
-			if (this._scrollTimer) clearTimeout(this._scrollTimer);
-			this._scrollTimer = setTimeout(() => {
-				this.calculateDisplayProgress();
-			}, 150);
-		}
-
-		const isStart = this.currentFileOffset === 0 && this.currentScrollTop < 10;
-		if (this.isAtChapterStart !== isStart) this.isAtChapterStart = isStart;
-
-		const isNearTop = this.currentFileOffset === 0 && this.currentScrollTop < this.alwaysShowTimeSensitivity;
-		if (this.isNearTopForHd !== isNearTop) this.isNearTopForHd = isNearTop;
+		this.currentScrollTop = e.scrollY
+		this.scheduleScrollUpdate()
 
 		if (this.contentHeight > this.scrollHeight) {
-			const threshold = this.auto ? 40 : this.chapterSwitchSensitivity;
+			const threshold = this.auto ? 40 : this.chapterSwitchSensitivity
 			if (this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)) {
-				let lastSeg = this.page2 || this.page1;
-				if ((lastSeg.offset + lastSeg.length) >= this.allSize) {
-					if (!this.isAtChapterEnd) {
-						this.isAtChapterEnd = true;
-						this.calculateDisplayProgress();
-					}
+				const lastSeg = this.page2 || this.page1
+				if ((lastSeg.offset + lastSeg.length) >= this.allSize && !this.isAtChapterEnd) {
+					this.isAtChapterEnd = true
 				}
 			}
 		}
 	},
 
 	onScrollTop() {
-		if (this.wait || this.currentFileOffset <= 0 || this.loadingPrev) return;
-		this.loadingPrev = true;
-		this.loadPrevSegment();
+		if (this.wait || this.currentFileOffset <= 0 || this.loadingPrev) return
+		this.loadingPrev = true
+		this.loadPrevSegment()
 	},
 
 	onScrollBottom() {
-		if (this.wait || this.loadingNext) return;
-		this.loadingNext = true;
-		this.loadNextSegment();
+		if (this.wait || this.loadingNext) return
+		this.loadingNext = true
+		this.loadNextSegment()
 	},
 
 	loadNextSegment() {
-		this.wait = true;
-		let lastSeg = this.page2 || this.page1;
-		let newOffset = lastSeg.offset + lastSeg.length;
+		this.wait = true
+		const lastSeg = this.page2 || this.page1
+		const newOffset = lastSeg.offset + lastSeg.length
 		if (newOffset >= this.allSize) {
-			this.loadingNext = false;
-			this.isAtChapterEnd = true;
-			this.wait = false;
-			return;
+			this.loadingNext = false
+			this.isAtChapterEnd = true
+			this.wait = false
+			return
 		}
 		this.readFileText(newOffset, (str, bytesRead) => {
-			this.loadingNext = false;
-			if (str) this.shiftPagesForward({ text: str, offset: newOffset, length: bytesRead });
-			else this.wait = false;
-		});
+			this.loadingNext = false
+			if (str) {
+				setTimeout(() => {
+					this.shiftPagesForward({ text: str, offset: newOffset, length: bytesRead })
+				}, 30)
+			} else {
+				this.wait = false
+			}
+		})
 	},
 
 	shiftPagesForward(nextPageData) {
-		const scrollPosBeforeLoad = this.currentScrollTop;
-		this.$element("page1").getBoundingClientRect({
+		const scrollPosBeforeLoad = this.currentScrollTop
+		const page1El = this.$element("page1")
+
+		if (!page1El) {
+			const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
+			this.page1 = this.page2
+			this.page2 = nextPageData
+			const newScrollPos = Math.max(0, scrollPosBeforeLoad - estimatedHeight + this.lineHeight)
+			this.scrollTopValue = newScrollPos
+			this.currentScrollTop = newScrollPos
+			this.currentFileOffset = this.page1.offset
+			this.calculateDisplayProgress()
+			this.saveData(true)
+			this.wait = false
+			this.updateContentHeight()
+			return
+		}
+
+		page1El.getBoundingClientRect({
 			success: (rect) => {
-				this.page1 = this.page2;
-				this.page2 = nextPageData;
-				const newScrollPos = Math.max(0, scrollPosBeforeLoad - rect.height + this.lineHeight);
-				this.scrollTopValue = newScrollPos;
-				this.currentScrollTop = newScrollPos;
-				this.currentFileOffset = this.page1.offset;
-				this.calculateDisplayProgress();
-				this.saveData(true);
-				this.wait = false;
-				this.updateContentHeight();
+				this.page1 = this.page2
+				this.page2 = nextPageData
+				const newScrollPos = Math.max(0, scrollPosBeforeLoad - rect.height + this.lineHeight)
+				this.scrollTopValue = newScrollPos
+				this.currentScrollTop = newScrollPos
+				this.currentFileOffset = this.page1.offset
+				this.calculateDisplayProgress()
+				this.saveData(true)
+				this.wait = false
+				this.updateContentHeight()
 			},
-			fail: () => { this.wait = false; }
-		});
+			fail: () => {
+				const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
+				this.page1 = this.page2
+				this.page2 = nextPageData
+				const newScrollPos = Math.max(0, scrollPosBeforeLoad - estimatedHeight + this.lineHeight)
+				this.scrollTopValue = newScrollPos
+				this.currentScrollTop = newScrollPos
+				this.currentFileOffset = this.page1.offset
+				this.calculateDisplayProgress()
+				this.saveData(true)
+				this.wait = false
+				this.updateContentHeight()
+			}
+		})
 	},
 
 	loadPrevSegment() {
-		this.wait = true;
+		this.wait = true
 		if (this.page1.offset <= 0) {
-			this.wait = false;
-			this.loadingPrev = false;
-			return;
+			this.wait = false
+			this.loadingPrev = false
+			return
 		}
-		let newOffset = Math.max(0, this.page1.offset - this.txtSizePage * 2);
+		const newOffset = Math.max(0, this.page1.offset - this.txtSizePage * 2)
 		this.readFileText(newOffset, (str, bytesRead) => {
-			this.loadingPrev = false;
+			this.loadingPrev = false
 			if (str) {
-				const prevPageData = { text: str, offset: newOffset, length: bytesRead };
-				this.page2 = this.page1;
-				this.page1 = prevPageData;
+				const prevPageData = { text: str, offset: newOffset, length: bytesRead }
+				this.page2 = this.page1
+				this.page1 = prevPageData
 				this.$element("page1").getBoundingClientRect({
 					success: (rect) => {
-						const newScrollPos = this.currentScrollTop + rect.height;
-						this.scrollTopValue = newScrollPos;
-						this.currentScrollTop = newScrollPos;
-						this.currentFileOffset = this.page1.offset;
-						this.calculateDisplayProgress();
-						this.saveData(true);
-						this.wait = false;
-						this.updateContentHeight();
+						const newScrollPos = this.currentScrollTop + rect.height
+						this.scrollTopValue = newScrollPos
+						this.currentScrollTop = newScrollPos
+						this.currentFileOffset = this.page1.offset
+						this.calculateDisplayProgress()
+						this.saveData(true)
+						this.wait = false
+						this.updateContentHeight()
 					},
-					fail: () => { this.wait = false; }
-				});
-			} else this.wait = false;
-		});
+					fail: () => {
+						const estimatedHeight = this.estimateTextHeightByText(this.page1.text)
+						const newScrollPos = this.currentScrollTop + estimatedHeight
+						this.scrollTopValue = newScrollPos
+						this.currentScrollTop = newScrollPos
+						this.currentFileOffset = this.page1.offset
+						this.calculateDisplayProgress()
+						this.saveData(true)
+						this.wait = false
+						this.updateContentHeight()
+					}
+				})
+			} else {
+				this.wait = false
+			}
+		})
 	},
 
 	onTouchStart(e) {
-		this.isTouching = true;
-		this.touchStartY = e.touches[0].clientY;
-		this.overscrollDistance = 0;
+		this.isTouching = true
+		this.touchStartY = e.touches[0].clientY
+		this.overscrollDistance = 0
 		if (this.chapterSwitchStyle === 'swipe') {
-			this.touchStartX = e.touches[0].clientX;
-			this.touchEndX = e.touches[0].clientX;
+			this.touchStartX = e.touches[0].clientX
+			this.touchEndX = e.touches[0].clientX
 		}
 	},
 
 	onTouchMove(e) {
-		if (!this.isTouching) return;
+		if (!this.isTouching) return
 		if (this.chapterSwitchStyle === 'boundary') {
-			const deltaY = e.touches[0].clientY - this.touchStartY;
-			if (this.isAtChapterStart && deltaY > 0) this.overscrollDistance = deltaY;
-			else if (this.isAtChapterEnd && deltaY < 0) this.overscrollDistance = -deltaY;
-			else this.overscrollDistance = 0;
+			const deltaY = e.touches[0].clientY - this.touchStartY
+			if (this.isAtChapterStart && deltaY > 0) this.overscrollDistance = deltaY
+			else if (this.isAtChapterEnd && deltaY < 0) this.overscrollDistance = -deltaY
+			else this.overscrollDistance = 0
 		} else if (this.chapterSwitchStyle === 'swipe') {
-			this.touchEndX = e.touches[0].clientX;
+			this.touchEndX = e.touches[0].clientX
 		}
 	},
 
 	onTouchEnd(e) {
-		if (!this.isTouching) return;
-		this.isTouching = false;
+		if (!this.isTouching) return
+		this.isTouching = false
 		if (this.chapterSwitchStyle === 'boundary') {
 			if (this.overscrollDistance > this.chapterSwitchSensitivity) {
-				if (this.isAtChapterStart) this.changeChapter(-1);
-				else if (this.isAtChapterEnd) this.changeChapter(1);
+				if (this.isAtChapterStart) this.changeChapter(-1)
+				else if (this.isAtChapterEnd) this.changeChapter(1)
 			}
-			this.overscrollDistance = 0;
+			this.overscrollDistance = 0
 		} else if (this.chapterSwitchStyle === 'swipe' && this.touchStartX !== 0) {
-			const deltaX = this.touchEndX - this.touchStartX;
-			if (Math.abs(deltaX) > this.swipeSensitivity) this.changeChapter(deltaX > 0 ? -1 : 1);
-			this.touchStartX = 0;
+			const deltaX = this.touchEndX - this.touchStartX
+			if (Math.abs(deltaX) > this.swipeSensitivity) this.changeChapter(deltaX > 0 ? -1 : 1)
+			this.touchStartX = 0
 		}
 	},
 
-	onPrevChapterClick() { this.changeChapter(-1); },
-	onNextChapterClick() { this.changeChapter(1); },
+	onPrevChapterClick() { this.changeChapter(-1) },
+	onNextChapterClick() { this.changeChapter(1) },
 
 	changeChapter(offset) {
-		if (this.wait) return;
-		this.wait = true;
-		this.isChangingChapter = true;
-		const nextIndex = this.currentChapterIndexInAll + offset;
+		if (this.wait) return
+		this.wait = true
+		this.isChangingChapter = true
+		const nextIndex = this.currentChapterIndexInAll + offset
 
 		if (nextIndex < 0) {
-			prompt.showToast({ message: '已是第一章' });
-			this.wait = false;
-			this.isChangingChapter = false;
-			return;
+			prompt.showToast({ message: '已是第一章' })
+			this.wait = false
+			this.isChangingChapter = false
+			return
 		}
 		if (nextIndex >= this.totalChapters) {
-			prompt.showToast({ message: '已是最后一章' });
+			prompt.showToast({ message: '已是最后一章' })
 			if (this.autoInterval) {
-				clearInterval(this.autoInterval);
-				this.autoInterval = null;
-				prompt.showToast({ message: '已关闭自动翻页' });
+				clearInterval(this.autoInterval)
+				this.autoInterval = null
+				prompt.showToast({ message: '已关闭自动翻页' })
 				if (this.keepScreenOnByAuto) {
-					this.keepScreenOnByAuto = false;
-					this.isKeepScreenOn = false;
-					brightness.setKeepScreenOn({ keepScreenOn: false });
+					this.keepScreenOnByAuto = false
+					this.isKeepScreenOn = false
+					brightness.setKeepScreenOn({ keepScreenOn: false })
 				}
 			}
-			this.wait = false;
-			this.isChangingChapter = false;
-			return;
+			this.wait = false
+			this.isChangingChapter = false
+			return
 		}
-		global.runGC();
-		this.isAtChapterEnd = false;
-		this.currentFileOffset = 0;
-		this.savedScrollOffset = 0;
-		this.scrollTopValue = 0;
-		this.currentScrollTop = 0;
+
+		global.runGC()
+		this.isAtChapterEnd = false
+		this.currentFileOffset = 0
+		this.savedScrollOffset = 0
+		this.scrollTopValue = 0
+		this.currentScrollTop = 0
 
 		this.loadChapter(nextIndex, () => {
 			if (this.readMode === 'nostalgic') {
-				this.loadNostalgicChapter(offset > 0 ? 0 : -1);
-				this.isChangingChapter = false;
+				this.loadNostalgicChapter(offset > 0 ? 0 : -1)
+				this.isChangingChapter = false
 			} else {
-				this.page1 = { text: "加载中...", offset: 0, length: 0 };
-				this.page2 = null;
+				this.page1 = { text: "加载中...", offset: 0, length: 0 }
+				this.page2 = null
 				if (offset > 0) {
-					this.loadInitialSegments();
-					this.isAtChapterStart = false;
-					this.isNearTopForHd = true;
+					this.loadInitialSegments()
+					this.isAtChapterStart = false
+					this.isNearTopForHd = true
 				} else {
-					this.loadEndAndScroll();
-					this.isAtChapterStart = false;
-					this.isNearTopForHd = false;
+					this.loadEndAndScroll()
+					this.isAtChapterStart = false
+					this.isNearTopForHd = false
 				}
 			}
-			this.displayProgress = offset > 0 ? 0 : 100;
-			this.saveData(true);
-		});
+			this.displayProgress = offset > 0 ? 0 : 100
+			this.saveData(true)
+		})
 	},
 
 	loadEndAndScroll() {
-		this.wait = true;
-		const readSize = this.txtSizePage * 3;
-		const readOffset = Math.max(0, this.allSize - readSize);
-		this.currentFileOffset = readOffset;
+		this.wait = true
+		const readSize = this.txtSizePage * 3
+		const readOffset = Math.max(0, this.allSize - readSize)
+		this.currentFileOffset = readOffset
 
 		this.readFileText(readOffset, (str, bytesRead) => {
-			if (this.page1) this.page1.text = null;
-			if (this.page2) this.page2.text = null;
-			this.page2 = null;
-			this.page1 = { text: str, offset: readOffset, length: bytesRead };
-			this.isAtChapterStart = (readOffset === 0);
+			if (this.page1) this.page1.text = null
+			if (this.page2) this.page2.text = null
+			this.page2 = null
+			this.page1 = { text: str, offset: readOffset, length: bytesRead }
+			this.isAtChapterStart = (readOffset === 0)
 
 			if ((readOffset + bytesRead) >= this.allSize) {
-				this.isAtChapterEnd = true;
-				this.scrollToBottom();
+				this.isAtChapterEnd = true
+				this.scrollToBottom()
 			} else {
 				this.loadUntilEnd(() => {
-					this.isAtChapterEnd = true;
-					this.scrollToBottom();
-				});
+					this.isAtChapterEnd = true
+					this.scrollToBottom()
+				})
 			}
-		});
+		})
 	},
 
 	loadUntilEnd(callback) {
-		let lastSeg = this.page2 || this.page1;
-		let newOffset = lastSeg.offset + lastSeg.length;
-		if (newOffset >= this.allSize) { if (callback) callback(); return; }
+		const lastSeg = this.page2 || this.page1
+		const newOffset = lastSeg.offset + lastSeg.length
+		if (newOffset >= this.allSize) { if (callback) callback(); return }
 		this.readFileText(newOffset, (str, bytesRead) => {
 			if (str) {
-				this.page2 = { text: str, offset: newOffset, length: bytesRead };
-				this.updateContentHeight();
-				if ((newOffset + bytesRead) >= this.allSize) { if (callback) callback(); }
-				else this.loadUntilEnd(callback);
-			} else { if (callback) callback(); }
-		});
+				this.page2 = { text: str, offset: newOffset, length: bytesRead }
+				this.updateContentHeight()
+				if ((newOffset + bytesRead) >= this.allSize) { if (callback) callback() }
+				else this.loadUntilEnd(callback)
+			} else { if (callback) callback() }
+		})
 	},
 
 	scrollToBottom() {
-		this.updateContentHeight();
+		this.updateContentHeight()
 		setTimeout(() => {
-			this.$element("contentContainer").getBoundingClientRect({
+			const el = this.$element("contentContainer")
+			if (!el) {
+				this.wait = false
+				this.isChangingChapter = false
+				return
+			}
+			el.getBoundingClientRect({
 				success: (rect) => {
-					this.contentHeight = rect.height;
-					const maxScrollPos = Math.max(0, this.contentHeight - this.scrollHeight);
-					this.scrollTopValue = maxScrollPos;
-					this.currentScrollTop = maxScrollPos;
-					this.savedScrollOffset = maxScrollPos;
-					this.wait = false;
-					this.isChangingChapter = false;
-					this.calculateDisplayProgress();
-					this.saveData(true);
+					this.contentHeight = rect.height
+					const maxScrollPos = Math.max(0, this.contentHeight - this.scrollHeight)
+					this.scrollTopValue = maxScrollPos
+					this.currentScrollTop = maxScrollPos
+					this.savedScrollOffset = maxScrollPos
+					this.wait = false
+					this.isChangingChapter = false
+					this.calculateDisplayProgress()
+					this.saveData(true)
 				},
 				fail: () => { 
-					this.wait = false;
-					this.isChangingChapter = false;
+					this.wait = false
+					this.isChangingChapter = false
 				}
-			});
-		}, 300);
+			})
+		}, 300)
 	},
 
 	saveData(forceImmediate = false) {
-		if (this.saveMode === 'periodic' && !forceImmediate) return;
-		this._performSave();
+		if (this.saveMode === 'periodic' && !forceImmediate) return
+		this._performSave()
 	},
 
 	async _performSave() {
-		if (!this.name || this.totalChapters === 0) return;
+		if (!this.name || this.totalChapters === 0) return
 		try {
-			this.calculateDisplayProgress();
-			let progress = await bookStorage.get(this.name);
-			progress.chapterIndex = this.currentChapterIndexInAll;
+			this.calculateDisplayProgress()
+			let progress = await bookStorage.get(this.name)
+			progress.chapterIndex = this.currentChapterIndexInAll
 			if (this.readMode === 'nostalgic') {
-				progress.offsetInChapter = Math.max(0, this.nostalgicSavedOffset || 0);
-				progress.scrollOffset = this.nostalgicOffsetTopNormal || 0;
+				progress.offsetInChapter = Math.max(0, this.nostalgicSavedOffset || 0)
+				progress.scrollOffset = this.nostalgicOffsetTopNormal || 0
 			} else {
-				progress.offsetInChapter = Math.max(0, Math.floor(this.currentFileOffset || 0));
-				progress.scrollOffset = Math.max(0, Math.floor(this.currentScrollTop || 0));
+				progress.offsetInChapter = Math.max(0, Math.floor(this.currentFileOffset || 0))
+				progress.scrollOffset = Math.max(0, Math.floor(this.currentScrollTop || 0))
 			}
-			progress.txtSizePage = this.txtSizePage;
-			progress.fontSize = this.fontSize;
-			progress.lastReadTimestamp = Date.now();
-			progress.chapterProgressPercent = parseFloat(this.displayProgress) || 0;
-			await bookStorage.set(this.name, progress);
+			progress.txtSizePage = this.txtSizePage
+			progress.fontSize = this.fontSize
+			progress.lastReadTimestamp = Date.now()
+			progress.chapterProgressPercent = parseFloat(this.displayProgress) || 0
+			await bookStorage.set(this.name, progress)
 		} catch (e) { }
 	},
 
 	async onHide() {
-		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer);
-		if (this.readingTimeSaveTimer) { clearInterval(this.readingTimeSaveTimer); this.readingTimeSaveTimer = null; }
-		if (this.autoInterval) clearInterval(this.autoInterval);
-		if (this.timer) { clearInterval(this.timer); this.timer = null; }
-		await this._performSave();
+		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer)
+		if (this.readingTimeSaveTimer) { clearInterval(this.readingTimeSaveTimer); this.readingTimeSaveTimer = null }
+		if (this.autoInterval) clearInterval(this.autoInterval)
+		if (this.timer) { clearInterval(this.timer); this.timer = null }
+		await this._performSave()
 		if (this.name) try { await readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
-		this.setRefreshFlag();
-		brightness.setKeepScreenOn({ keepScreenOn: false });
+		brightness.setKeepScreenOn({ keepScreenOn: false })
 	},
 
 	async onDestroy() {
-		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer);
-		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
-		if (this.timer) clearInterval(this.timer);
-		if (this.autoInterval) clearInterval(this.autoInterval);
-		if (this.clickTimeout) clearTimeout(this.clickTimeout);
-		if (this.gestureClickTimeout) clearTimeout(this.gestureClickTimeout);
-		if (this.longPressTimeout) clearTimeout(this.longPressTimeout);
-		if (this._scrollTimer) clearTimeout(this._scrollTimer);
-		await this._performSave();
+		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer)
+		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer)
+		if (this.timer) clearInterval(this.timer)
+		if (this.autoInterval) clearInterval(this.autoInterval)
+		if (this.clickTimeout) clearTimeout(this.clickTimeout)
+		if (this.gestureClickTimeout) clearTimeout(this.gestureClickTimeout)
+		if (this.longPressTimeout) clearTimeout(this.longPressTimeout)
+		if (this._scrollTimer) clearTimeout(this._scrollTimer)
+		await this._performSave()
 		if (this.name) try { await readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
-		brightness.setKeepScreenOn({ keepScreenOn: false });
-		global.runGC();
+		brightness.setKeepScreenOn({ keepScreenOn: false })
+		global.runGC()
 	},
 
 	onBackPress() {
-		const nostalgicSwipeEnabled = this.readMode === 'nostalgic' && this.nostalgicPageTurnMode === 'swipe';
-		const scrollSwipeEnabled = this.readMode !== 'nostalgic' && this.chapterSwitchStyle === 'swipe';
+		const nostalgicSwipeEnabled = this.readMode === 'nostalgic' && this.nostalgicPageTurnMode === 'swipe'
+		const scrollSwipeEnabled = this.readMode !== 'nostalgic' && this.chapterSwitchStyle === 'swipe'
 
 		if (nostalgicSwipeEnabled) {
-			this.turnNostalgicPage(-1);
-			return true;
+			this.turnNostalgicPage(-1)
+			return true
 		}
 
 		if (scrollSwipeEnabled) {
-			this.changeChapter(-1);
-			return true;
+			this.changeChapter(-1)
+			return true
 		}
 
-		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer);
-		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
-		if (this.autoInterval) clearInterval(this.autoInterval);
-		this._performSave();
-		if (this.name) try { readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
+		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer)
+		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer)
+		if (this.autoInterval) clearInterval(this.autoInterval)
+		this._performSave()
+		return false
 	},
 
 	async back() {
-		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer);
-		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
-		if (this.autoInterval) clearInterval(this.autoInterval);
-		await this._performSave();
-		if (this.name) try { await readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
-		this.setRefreshFlag();
-		router.back();
-	},
-
-	setRefreshFlag() {
-		storage.get({ key: 'EBOOK_SHELF_REFRESH_MODE', success: (data) => { if (data === 'onExit') globalThis.shouldRefreshShelf = true; } });
+		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer)
+		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer)
+		if (this.autoInterval) clearInterval(this.autoInterval)
+		await this._performSave()
+		router.back()
 	},
 
 	async gotoSetting() {
-		if (this.isProcessingClick) return;
-		this.isProcessingClick = true;
-		this.calculateDisplayProgress();
-		this.saveData(true);
-		globalThis.isKeepScreenOn = this.isKeepScreenOn;
-		globalThis.readerChapterAllSize = this.allSize;
-		globalThis.readerChapterIndex = this.currentChapterIndexInAll;
-		globalThis.readerChapterProgressPercent = parseFloat(this.displayProgress) || 0;
-		globalThis.readerTxtSizePage = this.txtSizePage;
-		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
-		this.readingTimeSaveTimer = null;
-		router.push({ uri: '/pages/detailsetting', params: { name: this.name } });
-		setTimeout(() => { this.isProcessingClick = false; }, 500);
+		if (this.isProcessingClick) return
+		this.isProcessingClick = true
+		this.calculateDisplayProgress()
+		this.saveData(true)
+		globalThis.isKeepScreenOn = this.isKeepScreenOn
+		globalThis.readerChapterAllSize = this.allSize
+		globalThis.readerChapterIndex = this.currentChapterIndexInAll
+		globalThis.readerChapterProgressPercent = parseFloat(this.displayProgress) || 0
+		globalThis.readerTxtSizePage = this.txtSizePage
+		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer)
+		this.readingTimeSaveTimer = null
+		router.push({ uri: '/pages/detailsetting', params: { name: this.name } })
+		setTimeout(() => { this.isProcessingClick = false }, 500)
 	},
 
 	async exitAppForTeacherScreen() {
-		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer);
-		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer);
-		if (this.autoInterval) clearInterval(this.autoInterval);
-		await this._performSave();
+		if (this.periodicSaveTimer) clearInterval(this.periodicSaveTimer)
+		if (this.readingTimeSaveTimer) clearInterval(this.readingTimeSaveTimer)
+		if (this.autoInterval) clearInterval(this.autoInterval)
+		await this._performSave()
 		if (this.name) try { await readingTimeStorage.recordReadingEnd(this.name); } catch (e) { }
-		app.terminate();
+		app.terminate()
 	},
 
 	loadNostalgicChapter(offsetInChapter) {
-		this.nostalgicOffsetTopNormal = 0;
-		this.nostalgicOffsetTopPreview = 0;
-		this.nostalgicPreViewShowFlag = false;
-		this.nostalgicBoxAllHeightNormal = 0;
-		this.nostalgicBoxAllHeightPreview = 0;
+		this.nostalgicOffsetTopNormal = 0
+		this.nostalgicOffsetTopPreview = 0
+		this.nostalgicPreViewShowFlag = false
+		this.nostalgicBoxAllHeightNormal = 0
+		this.nostalgicBoxAllHeightPreview = 0
+		this.nostalgicHeightCacheKey = ''
 
 		if (offsetInChapter === -1) {
-			this.loadNostalgicEnd();
+			this.loadNostalgicEnd()
 		} else {
 			if (this._fromBookmark && this._bookmarkOffsetInChapter !== null) {
-				this.nostalgicSavedOffset = this._bookmarkOffsetInChapter;
-				this.nostalgicOffsetTopNormal = this._bookmarkScrollOffset || 0;
+				this.nostalgicSavedOffset = this._bookmarkOffsetInChapter
+				this.nostalgicOffsetTopNormal = this._bookmarkScrollOffset || 0
 			} else if (this._fromPercent && this._percentTargetPercent !== null) {
-				this.nostalgicSavedOffset = Math.floor(this._percentTargetPercent / 100 * this.allSize);
-				this.nostalgicSavedOffset = this.nostalgicSavedOffset - (this.nostalgicSavedOffset % 2);
-				this.nostalgicOffsetTopNormal = 0;
+				this.nostalgicSavedOffset = Math.floor(this._percentTargetPercent / 100 * this.allSize)
+				this.nostalgicSavedOffset = this.nostalgicSavedOffset - (this.nostalgicSavedOffset % 2)
+				this.nostalgicOffsetTopNormal = 0
 			} else {
-				this.nostalgicSavedOffset = this.currentFileOffset || 0;
+				this.nostalgicSavedOffset = this.currentFileOffset || 0
 				if (!this._shouldScrollToTop && this.savedScrollOffset !== 0) {
-					this.nostalgicOffsetTopNormal = this.savedScrollOffset;
+					this.nostalgicOffsetTopNormal = this.savedScrollOffset
 				}
 			}
 			this.readNostalgicText(this.nostalgicSavedOffset, (str) => {
-				this.nostalgicText = str;
+				this.nostalgicText = str
 				this.getNostalgicBoxHeight('box1', (h) => {
-					this.nostalgicBoxAllHeightNormal = h;
-					this.resetNostalgicPageOffset();
-					this.wait = false;
-					this.isChangingChapter = false;
-				});
-			});
+					this.nostalgicBoxAllHeightNormal = h
+					this.resetNostalgicPageOffset()
+					this.wait = false
+					this.isChangingChapter = false
+				})
+			})
 		}
 	},
 
 	loadNostalgicEnd() {
-		this.wait = true;
-		const READ_LEN = this.txtSizePage * 2;
-		let offset = Math.max(0, this.allSize - READ_LEN);
-		this.nostalgicSavedOffset = offset;
+		this.wait = true
+		const READ_LEN = this.txtSizePage * 2
+		const offset = Math.max(0, this.allSize - READ_LEN)
+		this.nostalgicSavedOffset = offset
 		this.readNostalgicText(offset, (str) => {
-			this.nostalgicText = str;
+			this.nostalgicText = str
 			this.getNostalgicBoxHeight('box1', (h) => {
-				this.nostalgicBoxAllHeightNormal = h;
-				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0;
-				this.resetNostalgicPageOffset();
-				this.wait = false;
-				this.isChangingChapter = false;
-			});
-		});
+				this.nostalgicBoxAllHeightNormal = h
+				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0
+				this.resetNostalgicPageOffset()
+				this.wait = false
+				this.isChangingChapter = false
+			})
+		})
 	},
 
 	readNostalgicText(readOffset, cb) {
-		const READ_LEN = this.txtSizePage * 2;
-		let length = READ_LEN;
-		if (readOffset >= this.allSize) { cb(''); return; }
-		if (readOffset < 0) { length += readOffset; readOffset = 0; }
-		const maxLength = this.allSize - readOffset;
-		if (length > maxLength) length = maxLength;
+		const READ_LEN = this.txtSizePage * 2
+		let length = READ_LEN
+		if (readOffset >= this.allSize) { cb(''); return }
+		if (readOffset < 0) { length += readOffset; readOffset = 0 }
+		const maxLength = this.allSize - readOffset
+		if (length > maxLength) length = maxLength
 
 		file.readArrayBuffer({
 			uri: this.cPath, position: readOffset, length: length,
 			success: (data) => {
-				if (!data.buffer || data.buffer.byteLength === 0) { cb(''); return; }
+				if (!data.buffer || data.buffer.byteLength === 0) { cb(''); return }
 				try {
-					const buffer = new Uint8Array(data.buffer);
-					let bytesToUse = buffer.length;
+					const buffer = new Uint8Array(data.buffer)
+					let bytesToUse = buffer.length
 
 					if (readOffset === 0) {
-						let prefix = "";
-						if (this.chapterStartEmptyLines) prefix += "\n\n\n";
-						if (this.chapterStartNumber) prefix += `第 ${this.currentChapterIndexInAll + 1} / ${this.totalChapters} 章\n`;
-						if (this.chapterStartName) prefix += `${this.currentChapterName}\n`;
-						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`;
-						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n";
+						let prefix = ""
+						if (this.chapterStartEmptyLines) prefix += "\n\n\n"
+						if (this.chapterStartNumber) prefix += `第 ${this.currentChapterIndexInAll + 1} / ${this.totalChapters} 章\n`
+						if (this.chapterStartName) prefix += `${this.currentChapterName}\n`
+						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`
+						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n"
 
-						const prefixCharCount = prefix.length;
-						const prefixByteCount = prefixCharCount * 2;
-
+						const prefixByteCount = prefix.length * 2
 						if (prefixByteCount > 0 && (readOffset + buffer.length) < this.allSize) {
-							bytesToUse = Math.max(0, buffer.length - prefixByteCount);
-							bytesToUse = bytesToUse - (bytesToUse % 2);
+							bytesToUse = Math.max(0, buffer.length - prefixByteCount)
+							bytesToUse = bytesToUse - (bytesToUse % 2)
 						}
 					}
 
-					let str = "";
+					let str = ""
 					for (let i = 0; i < bytesToUse; i += 2) {
-						str += String.fromCharCode(buffer[i + 1] * 256 + buffer[i]);
+						str += String.fromCharCode(buffer[i + 1] * 256 + buffer[i])
 					}
 
-					let prefix = "";
+					let prefix = ""
 					if (readOffset === 0) {
-						if (this.chapterStartEmptyLines) prefix += "\n\n\n";
-						if (this.chapterStartNumber) prefix += `第 ${this.currentChapterIndexInAll + 1} / ${this.totalChapters} 章\n`;
-						if (this.chapterStartName) prefix += `${this.currentChapterName}\n`;
-						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`;
-						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n";
+						if (this.chapterStartEmptyLines) prefix += "\n\n\n"
+						if (this.chapterStartNumber) prefix += `第 ${this.currentChapterIndexInAll + 1} / ${this.totalChapters} 章\n`
+						if (this.chapterStartName) prefix += `${this.currentChapterName}\n`
+						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`
+						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n"
 					}
-					cb(prefix + str);
+					cb(prefix + str)
 				} catch (e) { cb(''); }
 			},
 			fail: () => { cb(''); }
-		});
+		})
 	},
 
 	getNostalgicBoxHeight(id, cb, secondFlag = false) {
+		const cacheKey = [
+			this.nostalgicText ? this.nostalgicText.length : 0,
+			this.fontSize,
+			this.lineHeight,
+			this.pageHeigh
+		].join('|')
+
+		if (this.nostalgicHeightCacheKey === cacheKey && this.nostalgicBoxAllHeightNormal > 0) {
+			cb(this.nostalgicBoxAllHeightNormal)
+			return
+		}
+
 		setTimeout(() => {
-			this.$element(id).getBoundingClientRect({
+			const el = this.$element(id)
+			if (!el) {
+				cb(this.pageHeigh)
+				return
+			}
+			el.getBoundingClientRect({
 				success: (data) => {
-					const height = data.height || 0;
+					const height = data.height || 0
 					if (height === 0 && !secondFlag) {
-						this.getNostalgicBoxHeight(id, cb, true);
-						return;
+						this.getNostalgicBoxHeight(id, cb, true)
+						return
 					}
-					const line = this.lineHeight > 0 ? this.lineHeight : 1;
-					const height2 = Math.ceil(height / line) * line;
-					cb(height2);
+					const line = this.lineHeight > 0 ? this.lineHeight : 1
+					const height2 = Math.ceil(height / line) * line
+					this.nostalgicHeightCacheKey = cacheKey
+					cb(height2)
 				},
 				fail: () => { cb(this.pageHeigh); }
-			});
-		}, 150);
+			})
+		}, 150)
 	},
 
 	resetNostalgicPageOffset() {
-		const READ_LEN = this.txtSizePage * 2;
-		this.nostalgicPreViewShowFlag = false;
+		const READ_LEN = this.txtSizePage * 2
+		this.nostalgicPreViewShowFlag = false
 
 		if (this.nostalgicOffsetTopNormal > 0) {
 			if (this.nostalgicSavedOffset <= 0) {
-				this.nostalgicOffsetTopNormal = 0;
+				this.nostalgicOffsetTopNormal = 0
 				if (this.currentChapterIndexInAll > 0) {
-					this.changeChapter(-1);
+					this.changeChapter(-1)
 				} else {
-					prompt.showToast({ message: '已是第一章' });
-					this.isAtChapterStart = true;
-					this.updateNostalgicProgress();
+					prompt.showToast({ message: '已是第一章' })
+					this.isAtChapterStart = true
+					this.updateNostalgicProgress()
 				}
-				return;
+				return
 			}
 
-			const prevOffset = Math.max(0, this.nostalgicSavedOffset - READ_LEN);
-			const carryOffset = this.nostalgicOffsetTopNormal;
-			this.wait = true;
+			const prevOffset = Math.max(0, this.nostalgicSavedOffset - READ_LEN)
+			const carryOffset = this.nostalgicOffsetTopNormal
+			this.wait = true
 			this.readNostalgicText(prevOffset, (str) => {
-				this.nostalgicText = str;
-				this.nostalgicSavedOffset = prevOffset;
+				this.nostalgicText = str
+				this.nostalgicSavedOffset = prevOffset
 				this.getNostalgicBoxHeight('box1', (h) => {
-					this.nostalgicBoxAllHeightNormal = h;
-					this.nostalgicOffsetTopNormal = carryOffset - this.nostalgicBoxAllHeightNormal;
+					this.nostalgicBoxAllHeightNormal = h
+					this.nostalgicOffsetTopNormal = carryOffset - this.nostalgicBoxAllHeightNormal
 					if (prevOffset <= 0 && this.nostalgicOffsetTopNormal > 0) {
-						this.nostalgicOffsetTopNormal = 0;
-						this.nostalgicSavedOffset = 0;
+						this.nostalgicOffsetTopNormal = 0
+						this.nostalgicSavedOffset = 0
 					}
-					this.wait = false;
-					this.resetNostalgicPageOffset();
-				});
-			});
-			return;
+					this.wait = false
+					this.resetNostalgicPageOffset()
+				})
+			})
+			return
 		}
 
-		const remain = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
+		const remain = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal
 		if (remain > 0) {
 			if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
-				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0;
+				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0
 			}
-			this.updateNostalgicProgress();
-			return;
+			this.updateNostalgicProgress()
+			return
 		}
 
 		if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
-			this.nostalgicOffsetTopNormal -= remain;
+			this.nostalgicOffsetTopNormal -= remain
 			if (this.currentChapterIndexInAll < this.totalChapters - 1) {
-				this.changeChapter(1);
+				this.changeChapter(1)
 			} else {
-				prompt.showToast({ message: '已是最后一章' });
-				this.isAtChapterEnd = true;
-				this.updateNostalgicProgress();
+				prompt.showToast({ message: '已是最后一章' })
+				this.isAtChapterEnd = true
+				this.updateNostalgicProgress()
 			}
-			return;
+			return
 		}
 
-		const nextOffset = this.nostalgicSavedOffset + READ_LEN;
-		const carryOffset = remain <= -this.pageHeigh ? (remain + this.pageHeigh) : 0;
-		this.wait = true;
+		const nextOffset = this.nostalgicSavedOffset + READ_LEN
+		const carryOffset = remain <= -this.pageHeigh ? (remain + this.pageHeigh) : 0
+		this.wait = true
 		this.readNostalgicText(nextOffset, (str) => {
-			this.nostalgicText = str;
-			this.nostalgicSavedOffset = nextOffset;
+			this.nostalgicText = str
+			this.nostalgicSavedOffset = nextOffset
 			this.getNostalgicBoxHeight('box1', (h) => {
-				this.nostalgicBoxAllHeightNormal = h;
-				this.nostalgicOffsetTopNormal = carryOffset;
-				this.wait = false;
-				this.resetNostalgicPageOffset();
-			});
-		});
+				this.nostalgicBoxAllHeightNormal = h
+				this.nostalgicOffsetTopNormal = carryOffset
+				this.wait = false
+				this.resetNostalgicPageOffset()
+			})
+		})
 	},
 
 	updateNostalgicProgress() {
-		const READ_LEN = this.txtSizePage * 2;
-		this.isAtChapterStart = (this.nostalgicSavedOffset === 0 && this.nostalgicOffsetTopNormal >= 0);
-		let preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal;
-		this.isAtChapterEnd = (this.nostalgicSavedOffset + READ_LEN >= this.allSize && preOffset <= 0);
-		this.isNearTopForHd = this.isAtChapterStart;
-		
+		const READ_LEN = this.txtSizePage * 2
+		this.isAtChapterStart = (this.nostalgicSavedOffset === 0 && this.nostalgicOffsetTopNormal >= 0)
+		const preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal
+		this.isAtChapterEnd = (this.nostalgicSavedOffset + READ_LEN >= this.allSize && preOffset <= 0)
+		this.isNearTopForHd = this.isAtChapterStart
+
 		if (this.allSize > 0) {
-			let bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1);
-			let scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0);
-			let newProg = Math.min(100, Math.max(0, (scrolled / this.allSize) * 100));
-			newProg = Math.round(newProg * 10) / 10;
-			if (this.displayProgress !== newProg) {
-				this.displayProgress = newProg;
-			}
+			const bytesPerPixel = READ_LEN / (this.nostalgicBoxAllHeightNormal || 1)
+			const scrolled = this.nostalgicSavedOffset + (this.nostalgicOffsetTopNormal < 0 ? -this.nostalgicOffsetTopNormal * bytesPerPixel : 0)
+			let newProg = Math.min(100, Math.max(0, (scrolled / this.allSize) * 100))
+			newProg = Math.round(newProg * 10) / 10
+			if (this.displayProgress !== newProg) this.displayProgress = newProg
 		} else {
-			if (this.displayProgress !== 0) this.displayProgress = 0;
+			if (this.displayProgress !== 0) this.displayProgress = 0
 		}
-		this.saveData(true);
+		this.saveData(true)
 	},
 
 	onNostalgicTouchStart(e) {
 		if (this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') {
-			this.nostalgicIsTouching = true;
-			this.nostalgicTouchStartX = e.touches[0].clientX;
-			this.nostalgicTouchStartY = e.touches[0].clientY;
-			this.nostalgicTouchEndX = e.touches[0].clientX;
-			this.nostalgicTouchEndY = e.touches[0].clientY;
+			this.nostalgicIsTouching = true
+			this.nostalgicTouchStartX = e.touches[0].clientX
+			this.nostalgicTouchStartY = e.touches[0].clientY
+			this.nostalgicTouchEndX = e.touches[0].clientX
+			this.nostalgicTouchEndY = e.touches[0].clientY
 		}
 	},
 
 	onNostalgicTouchMove(e) {
 		if ((this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') && this.nostalgicIsTouching) {
-			this.nostalgicTouchEndX = e.touches[0].clientX;
-			this.nostalgicTouchEndY = e.touches[0].clientY;
+			this.nostalgicTouchEndX = e.touches[0].clientX
+			this.nostalgicTouchEndY = e.touches[0].clientY
 		}
 	},
 
 	onNostalgicTouchEnd(e) {
 		if ((this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') && this.nostalgicIsTouching) {
-			this.nostalgicIsTouching = false;
-			const deltaX = this.nostalgicTouchEndX - this.nostalgicTouchStartX;
-			const deltaY = this.nostalgicTouchEndY - this.nostalgicTouchStartY;
+			this.nostalgicIsTouching = false
+			const deltaX = this.nostalgicTouchEndX - this.nostalgicTouchStartX
+			const deltaY = this.nostalgicTouchEndY - this.nostalgicTouchStartY
 			if (this.nostalgicPageTurnMode === 'swipe') {
 				if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
-					if (deltaX < 0) this.turnNostalgicPage(1);
-					else this.turnNostalgicPage(-1);
+					if (deltaX < 0) this.turnNostalgicPage(1)
+					else this.turnNostalgicPage(-1)
 				}
 			} else if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > Math.abs(deltaX)) {
-				if (deltaY < 0) this.turnNostalgicPage(1);
-				else this.turnNostalgicPage(-1);
+				if (deltaY < 0) this.turnNostalgicPage(1)
+				else this.turnNostalgicPage(-1)
 			}
 		}
 	},
 
 	turnNostalgicPage(direction) {
-		if (this.wait) return;
+		if (this.wait) return
 		if (direction > 0) {
-			this.nostalgicOffsetTopNormal -= this.pageHeigh;
-			this.resetNostalgicPageOffset();
+			this.nostalgicOffsetTopNormal -= this.pageHeigh
+			this.resetNostalgicPageOffset()
 		} else {
-			this.nostalgicOffsetTopNormal += this.pageHeigh;
-			this.resetNostalgicPageOffset();
+			this.nostalgicOffsetTopNormal += this.pageHeigh
+			this.resetNostalgicPageOffset()
 		}
 	},
 
 	onNostalgicClick(event) {
 		this.handleGeneralClick(event, (evt) => {
-			if (this.isChangingChapter) return;
+			if (this.isChangingChapter) return
 			if (this.wait) {
-				this.showSetting = !this.showSetting;
-				return;
+				this.showSetting = !this.showSetting
+				return
 			}
 
 			if (this.nostalgicPageTurnMode === 'swipe' || this.nostalgicPageTurnMode === 'topBottomSwipe') {
 				if (this.swipeSideClickEnabled) {
-					const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
+					const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0
 					if (clickX < 432 / 3) {
-						this.turnNostalgicPage(-1);
+						this.turnNostalgicPage(-1)
 					} else if (clickX > 432 * 2 / 3) {
-						this.turnNostalgicPage(1);
+						this.turnNostalgicPage(1)
 					} else {
-						this.showSetting = !this.showSetting;
+						this.showSetting = !this.showSetting
 					}
 				} else {
-					this.showSetting = !this.showSetting;
+					this.showSetting = !this.showSetting
 				}
 			} else {
-				const isTopBottom = this.nostalgicPageTurnMode === 'topBottomClick';
-				const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
-				const clickY = evt.offsetY || (evt.detail && evt.detail.y) || 0;
-				const clickPos = isTopBottom ? clickY : clickX;
-				const dim = isTopBottom ? 514 : 432;
-				if (clickPos < dim / 3) this.turnNostalgicPage(-1);
-				else if (clickPos > dim * 2 / 3) this.turnNostalgicPage(1);
-				else this.showSetting = !this.showSetting;
+				const isTopBottom = this.nostalgicPageTurnMode === 'topBottomClick'
+				const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0
+				const clickY = evt.offsetY || (evt.detail && evt.detail.y) || 0
+				const clickPos = isTopBottom ? clickY : clickX
+				const dim = isTopBottom ? 514 : 432
+				if (clickPos < dim / 3) this.turnNostalgicPage(-1)
+				else if (clickPos > dim * 2 / 3) this.turnNostalgicPage(1)
+				else this.showSetting = !this.showSetting
 			}
-		});
+		})
 	},
 
 	onTxtClick(event) {
 		this.handleGeneralClick(event, (evt) => {
-			if (this.isChangingChapter) return;
+			if (this.isChangingChapter) return
 			if (this.wait) {
-				this.showSetting = !this.showSetting;
-				return;
+				this.showSetting = !this.showSetting
+				return
 			}
-            
-            const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0;
 
+			const clickX = evt.offsetX || (evt.detail && evt.detail.x) || 0
 			if (this.swipe === 'column') {
-                if (this.swipeSideClickEnabled) {
-                    if (clickX < 432 / 3) {
-                        if (this.isAtChapterStart) this.changeChapter(-1);
-                        else this.lastPage();
-                    } else if (clickX > 432 * 2 / 3) {
-                        if (this.isAtChapterEnd) this.changeChapter(1);
-                        else this.nextPage();
-                    } else {
-                        this.showSetting = !this.showSetting;
-                    }
-                } else {
-				    this.showSetting = !this.showSetting;
-                }
+				if (this.swipeSideClickEnabled) {
+					if (clickX < 432 / 3) {
+						if (this.isAtChapterStart) this.changeChapter(-1)
+						else this.lastPage()
+					} else if (clickX > 432 * 2 / 3) {
+						if (this.isAtChapterEnd) this.changeChapter(1)
+						else this.nextPage()
+					} else {
+						this.showSetting = !this.showSetting
+					}
+				} else {
+					this.showSetting = !this.showSetting
+				}
 			} else {
-				if (this.showSetting) this.showSetting = false;
-				else if (evt.offsetY <= 158) this.lastPage();
-				else if (evt.offsetY <= 322) this.showSetting = true;
-				else this.nextPage();
+				if (this.showSetting) this.showSetting = false
+				else if (evt.offsetY <= 158) this.lastPage()
+				else if (evt.offsetY <= 322) this.showSetting = true
+				else this.nextPage()
 			}
-		});
+		})
 	},
 
 	handleGeneralClick(event, actionCallback) {
 		if (this.teacherScreenEnabled) {
-			this.clickCount++;
-			if (this.clickTimeout) clearTimeout(this.clickTimeout);
+			this.clickCount++
+			if (this.clickTimeout) clearTimeout(this.clickTimeout)
 			if (this.clickCount >= 3) {
-				this.clickCount = 0;
-				this.exitAppForTeacherScreen();
-				return;
+				this.clickCount = 0
+				this.exitAppForTeacherScreen()
+				return
 			}
-			this.clickTimeout = setTimeout(() => { this.clickCount = 0; }, 500);
+			this.clickTimeout = setTimeout(() => { this.clickCount = 0 }, 500)
 		}
 
 		if (this.gestureMode === 'double') {
-			this.gestureClickCount++;
-			if (this.gestureClickTimeout) clearTimeout(this.gestureClickTimeout);
+			this.gestureClickCount++
+			if (this.gestureClickTimeout) clearTimeout(this.gestureClickTimeout)
 			if (this.gestureClickCount === 2) {
-				this.gestureClickCount = 0;
-				this.showSetting = !this.showSetting;
-				return;
+				this.gestureClickCount = 0
+				this.showSetting = !this.showSetting
+				return
 			} else {
 				this.gestureClickTimeout = setTimeout(() => {
-					this.gestureClickCount = 0;
-				}, 300);
+					this.gestureClickCount = 0
+				}, 300)
 			}
 		} else {
-			if (this.showSetting) this.showSetting = false;
-			else actionCallback(event);
+			if (this.showSetting) this.showSetting = false
+			else actionCallback(event)
 		}
 	},
 
 	onTxtLongPress(event) {
 		if (this.auto) {
 			if (this.autoInterval) {
-				clearInterval(this.autoInterval);
-				this.autoInterval = null;
-				prompt.showToast({ message: '已关闭自动翻页' });
+				clearInterval(this.autoInterval)
+				this.autoInterval = null
+				prompt.showToast({ message: '已关闭自动翻页' })
 				if (this.keepScreenOnByAuto) {
-					this.keepScreenOnByAuto = false;
-					this.isKeepScreenOn = false;
-					brightness.setKeepScreenOn({ keepScreenOn: false });
+					this.keepScreenOnByAuto = false
+					this.isKeepScreenOn = false
+					brightness.setKeepScreenOn({ keepScreenOn: false })
 				}
-				return;
+				return
 			}
 			this.autoInterval = setInterval(() => {
-				if (this.wait) return;
-				if (this.readMode === 'nostalgic') this.turnNostalgicPage(1);
-				else if (this.isAtChapterEnd) this.changeChapter(1);
-				else this.nextPage();
-			}, this.auto * 1000);
-			prompt.showToast({ message: '已开启自动翻页' });
+				if (this.wait) return
+				if (this.readMode === 'nostalgic') this.turnNostalgicPage(1)
+				else if (this.isAtChapterEnd) this.changeChapter(1)
+				else this.nextPage()
+			}, this.auto * 1000)
+			prompt.showToast({ message: '已开启自动翻页' })
 			if (!this.isKeepScreenOn) {
-				this.keepScreenOnByAuto = true;
-				this.isKeepScreenOn = true;
-				brightness.setKeepScreenOn({ keepScreenOn: true });
+				this.keepScreenOnByAuto = true
+				this.isKeepScreenOn = true
+				brightness.setKeepScreenOn({ keepScreenOn: true })
 			}
-			brightness.setKeepScreenOn({ keepScreenOn: true });
 		}
 	},
 
-	lastPage() { this.$element("scrollId").scrollBy({ top: -(this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }); },
-	nextPage() { this.$element("scrollId").scrollBy({ top: (this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }); },
+	lastPage() { this.$element("scrollId").scrollBy({ top: -(this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }) },
+	nextPage() { this.$element("scrollId").scrollBy({ top: (this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }) },
 
 	toggleKeepScreenOn() {
-		this.isKeepScreenOn = !this.isKeepScreenOn;
-		this.keepScreenOnByAuto = false;
-		globalThis.isKeepScreenOn = this.isKeepScreenOn;
-		brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn });
-		prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' });
+		this.isKeepScreenOn = !this.isKeepScreenOn
+		this.keepScreenOnByAuto = false
+		globalThis.isKeepScreenOn = this.isKeepScreenOn
+		brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn })
+		prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' })
 	},
 
 	async addBookmark() {
-		if (this.isProcessingClick) return;
-		this.isProcessingClick = true;
-		if (this.longPressTriggered) { this.isProcessingClick = false; return; }
+		if (this.isProcessingClick) return
+		this.isProcessingClick = true
+		if (this.longPressTriggered) { this.isProcessingClick = false; return }
 
-		let bookmarks = await bookStorage.getBookmarks(this.name) || [];
-		const chapter = await chapterManager.getChapterByIndex(this.name, this.currentChapterIndexInAll);
+		let bookmarks = await bookStorage.getBookmarks(this.name) || []
+		const chapter = await chapterManager.getChapterByIndex(this.name, this.currentChapterIndexInAll)
 		if (!chapter || chapter.index === undefined) {
-			prompt.showToast({ message: '无法添加书签，章节信息错误' });
-			this.isProcessingClick = false;
-			return;
+			prompt.showToast({ message: '无法添加书签，章节信息错误' })
+			this.isProcessingClick = false
+			return
 		}
 
 		bookmarks.push({
@@ -1515,24 +1700,24 @@ export default {
 			scrollOffset: this.readMode === 'nostalgic' ? this.nostalgicOffsetTopNormal : Math.max(0, Math.floor(this.currentScrollTop || 0)),
 			time: new Date().getTime(),
 			name: `书签${bookmarks.length + 1}`
-		});
-		bookmarks.sort((a, b) => a.chapterIndex - b.chapterIndex || a.offsetInChapter - b.offsetInChapter);
+		})
+		bookmarks.sort((a, b) => a.chapterIndex - b.chapterIndex || a.offsetInChapter - b.offsetInChapter)
 		try {
-			await bookStorage.setBookmarks(this.name, bookmarks);
-			prompt.showToast({ message: '添加书签成功' });
-		} catch (e) { prompt.showToast({ message: '添加书签失败' }); }
-		this.isProcessingClick = false;
+			await bookStorage.setBookmarks(this.name, bookmarks)
+			prompt.showToast({ message: '添加书签成功' })
+		} catch (e) { prompt.showToast({ message: '添加书签失败' }) }
+		this.isProcessingClick = false
 	},
 
 	gotoBookmarks() {
-		if (this.isProcessingClick) return;
-		this.isProcessingClick = true;
-		this.longPressTriggered = true;
-		if (this.longPressTimeout) clearTimeout(this.longPressTimeout);
-		this.longPressTimeout = setTimeout(() => { this.longPressTriggered = false; this.longPressTimeout = null; }, 300);
-		this.saveData(true);
-		router.push({ uri: '/pages/bookmarks', params: { name: this.name } });
-		setTimeout(() => { this.isProcessingClick = false; }, 500);
+		if (this.isProcessingClick) return
+		this.isProcessingClick = true
+		this.longPressTriggered = true
+		if (this.longPressTimeout) clearTimeout(this.longPressTimeout)
+		this.longPressTimeout = setTimeout(() => { this.longPressTriggered = false; this.longPressTimeout = null }, 300)
+		this.saveData(true)
+		router.push({ uri: '/pages/bookmarks', params: { name: this.name } })
+		setTimeout(() => { this.isProcessingClick = false }, 500)
 	}
 }
 </script>
@@ -1541,8 +1726,9 @@ export default {
 .page {
 	width: 432px;
 	height: 514px;
-	background-color: #000000;
+	background-color: #000;
 }
+
 .progress-bar-container {
 	position: absolute;
 	bottom: 0px;
@@ -1550,6 +1736,7 @@ export default {
 	justify-content: center;
 	align-items: center;
 }
+
 .progress-bar-percent {
 	position: absolute;
 	left: 0px;
