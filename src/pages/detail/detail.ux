@@ -859,20 +859,56 @@ export default {
 	},
 
 	shiftPagesForward(nextPageData) {
-		const scrollPosBeforeLoad = this.currentScrollTop
-		const prevHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
+		const scrollPosBeforeLoad = this.currentScrollTop;
+		const page1El = this.$element("page1");
 
-		this.page1 = this.page2
-		this.page2 = nextPageData
+		if (!page1El) {
+			const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '');
+			this.page1 = this.page2;
+			this.page2 = nextPageData;
+			const newScrollPos = Math.max(0, scrollPosBeforeLoad - estimatedHeight + this.lineHeight);
+			this.scrollTopValue = newScrollPos;
+			this.currentScrollTop = newScrollPos;
+			this.currentFileOffset = this.page1.offset;
+			this.saveData(true);
+			this.wait = false;
+			this.updateContentHeight();
+			this.calculateDisplayProgress();
+			return;
+		}
 
-		const newScrollPos = Math.max(0, scrollPosBeforeLoad - prevHeight + this.lineHeight)
-		this.scrollTopValue = newScrollPos
-		this.currentScrollTop = newScrollPos
-		this.currentFileOffset = this.page1.offset
-		this.saveData(true)
-		this.wait = false
-		this.updateContentHeight()
-		this.calculateDisplayProgress()
+		page1El.getBoundingClientRect({
+			success: (rect) => {
+				this.page1 = this.page2;
+				this.page2 = nextPageData;
+
+				const newScrollPos = Math.max(0, scrollPosBeforeLoad - rect.height + this.lineHeight);
+
+				this.scrollTopValue = newScrollPos;
+				this.currentScrollTop = newScrollPos;
+				this.currentFileOffset = this.page1.offset;
+
+				this.saveData(true);
+				this.wait = false;
+				this.updateContentHeight();
+				this.calculateDisplayProgress();
+			},
+			fail: () => {
+				const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '');
+				this.page1 = this.page2;
+				this.page2 = nextPageData;
+				const newScrollPos = Math.max(0, scrollPosBeforeLoad - estimatedHeight + this.lineHeight);
+
+				this.scrollTopValue = newScrollPos;
+				this.currentScrollTop = newScrollPos;
+				this.currentFileOffset = this.page1.offset;
+
+				this.saveData(true);
+				this.wait = false;
+				this.updateContentHeight();
+				this.calculateDisplayProgress();
+			}
+		});
 	},
 
 	loadPrevSegment() {
