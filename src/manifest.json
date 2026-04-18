@@ -4,7 +4,7 @@
   "versionName": "V26.4.0.BAND10",
   "versionCode": 260418,
   "minPlatformVersion": 1100,
-  "icon": "/common/logo.png",
+  "icon": "/common/icon.png",
   "simulationVersion": "default",
   "deviceTypeList": [
     "watch"
