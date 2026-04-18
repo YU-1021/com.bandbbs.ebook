@@ -26,8 +26,14 @@ export default class interconnfile {
     BATCH_WRITE_SIZE = 15;
     CHAPTERS_PER_FILE = 100;
     lindexContent = null;
-    chapterBufferStr = "";
-    isFirstWriteInChapter = true;
+
+    chapterWriteState = new Map();
+    
+    dirtyLindex = false;
+    lastLindexFlushTime = 0;
+    LINDEX_FLUSH_INTERVAL = 5000;
+
+    flushingMetas = false;
 
     constructor({ addListener, send, setEventListener }) {
         this.send = send;
@@ -115,14 +121,17 @@ export default class interconnfile {
         this.currentBookCoverUri = null;
         this.currentChapterMeta = null;
         this.currentSavingChapterIndex = -1;
-        this.chapterBufferStr = "";
-        this.isFirstWriteInChapter = true;
+        this.chapterWriteState.clear();
+        this.dirtyLindex = false;
+        this.lastLindexFlushTime = 0;
+        this.flushingMetas = false;
     }
 
     async handleCancel() {
         if (this.pendingChapterMetas.length > 0) {
             await this.flushPendingChapterMetas().catch(() => {});
         }
+        await this.flushLindexIfNeeded(true).catch(() => {});
         this.send({ type: "cancel" });
         this.resetState();
         this.callback({ msg: "cancel" });
@@ -185,7 +194,7 @@ export default class interconnfile {
                             const idx = parseInt(line.split('\t')[0], 10);
                             if (!isNaN(idx)) indexSet.add(idx);
                         });
-                    } catch(e) {}
+                    } catch (e) {}
                 }
                 syncedChapterIndices = Array.from(indexSet);
             }
@@ -218,7 +227,7 @@ export default class interconnfile {
             const bookInfoData = await runAsyncFunc(file.readText, { uri: bookInfoUri });
             bookInfo = JSON.parse(bookInfoData.text);
             if (bookInfo.coverFileName) {
-                await runAsyncFunc(file.delete, { uri: bookUri + '/' + bookInfo.coverFileName }).catch(()=>{});
+                await runAsyncFunc(file.delete, { uri: bookUri + '/' + bookInfo.coverFileName }).catch(() => {});
             }
         } catch (e) {}
 
@@ -243,20 +252,20 @@ export default class interconnfile {
         this.syncedChapterIndices.clear();
         const indexesDirUri = `${this.baseUri}${this.currentBookDir}/indexes/`;
         try {
-             const { fileList } = await runAsyncFunc(file.list, { uri: indexesDirUri });
-             if (fileList) {
-                 for (const f of fileList) {
-                     if (!f.uri.endsWith('.txt')) continue;
-                     try {
-                         const text = await runAsyncFunc(file.readText, { uri: f.uri });
-                         text.text.split('\n').forEach(line => {
-                             if (!line.trim()) return;
-                             const index = parseInt(line.split('\t')[0], 10);
-                             if (!isNaN(index)) this.syncedChapterIndices.add(index);
-                         });
-                     } catch(e) {}
-                 }
-             }
+            const { fileList } = await runAsyncFunc(file.list, { uri: indexesDirUri });
+            if (fileList) {
+                for (const f of fileList) {
+                    if (!f.uri.endsWith('.txt')) continue;
+                    try {
+                        const text = await runAsyncFunc(file.readText, { uri: f.uri });
+                        text.text.split('\n').forEach(line => {
+                            if (!line.trim()) return;
+                            const index = parseInt(line.split('\t')[0], 10);
+                            if (!isNaN(index)) this.syncedChapterIndices.add(index);
+                        });
+                    } catch (e) {}
+                }
+            }
         } catch (e) {}
         this.receivedChapters = this.syncedChapterIndices.size;
     }
@@ -271,6 +280,10 @@ export default class interconnfile {
         this.pendingChapterMetas = [];
         this.lindexContent = null;
         this.syncedChapterIndices.clear();
+        this.chapterWriteState.clear();
+        this.dirtyLindex = false;
+        this.lastLindexFlushTime = 0;
+        this.flushingMetas = false;
 
         this.callback({ msg: "start", total, filename });
 
@@ -292,7 +305,7 @@ export default class interconnfile {
         } catch (e) {}
 
         await this.rebuildSyncedIndices();
-        
+
         try {
             const lindexData = await runAsyncFunc(file.readText, { uri: lindexUri });
             let lines = lindexData.text.split('\n');
@@ -373,7 +386,7 @@ export default class interconnfile {
 
     async saveCoverChunk({ chunkIndex, data }) {
         if (chunkIndex === 0) {
-            await runAsyncFunc(file.delete, { uri: this.currentBookCoverUri }).catch(()=>{});
+            await runAsyncFunc(file.delete, { uri: this.currentBookCoverUri }).catch(() => {});
         }
 
         const coverBytes = this.base64ToArrayBuffer(data);
@@ -401,7 +414,7 @@ export default class interconnfile {
         const sanitizedDirName = this.generateDirName(filename);
         const bookUri = this.baseUri + sanitizedDirName;
         const bookInfoUri = bookUri + '/book_info.json';
-        
+
         let bookInfo = {};
         try {
             bookInfo = JSON.parse((await runAsyncFunc(file.readText, { uri: bookInfoUri })).text);
@@ -412,7 +425,7 @@ export default class interconnfile {
         if (bookStatus != null) bookInfo.bookStatus = bookStatus;
         if (category != null) bookInfo.category = category;
         if (localCategory !== undefined) bookInfo.localCategory = localCategory;
-        
+
         if ((!bookInfo.localCategory) && bookInfo.category) {
             bookInfo.localCategory = bookInfo.category;
         }
@@ -468,42 +481,76 @@ export default class interconnfile {
         const { count, data } = payload;
         const chapterData = JSON.parse(data);
 
+        const chapterIndex = chapterData.index;
+        const chapterUri = `${this.baseUri}${this.currentBookDir}/content/${chapterIndex}.txt`;
+        const state = this.chapterWriteState.get(chapterIndex) || {
+            started: false,
+            completed: false,
+            lastChunkNum: -1,
+            totalChunks: 0
+        };
+
+        if (state.completed && chapterData.chunkNum !== 0) {
+            const overallProgress = (count + ((chapterData.chunkNum + 1) / chapterData.totalChunks)) / this.totalChapters;
+            this.callback({ msg: "next", progress: overallProgress, filename: this.currentBookName });
+
+            if (chapterData.chunkNum === chapterData.totalChunks - 1) {
+                await this.send({ type: "chapter_chunk_complete" });
+            } else {
+                await this.send({ type: "next_chunk" });
+            }
+            return;
+        }
+
         const isFirstChunk = chapterData.chunkNum === 0;
         const isLastChunk = chapterData.chunkNum === chapterData.totalChunks - 1;
-        const chapterUri = `${this.baseUri}${this.currentBookDir}/content/${chapterData.index}.txt`;
 
         if (isFirstChunk) {
-            this.currentSavingChapterIndex = chapterData.index;
-            this.chapterBufferStr = "";
-            this.isFirstWriteInChapter = true;
+            state.started = true;
+            state.completed = false;
+            state.lastChunkNum = -1;
+            state.totalChunks = chapterData.totalChunks;
+
+            this.currentSavingChapterIndex = chapterIndex;
+
+            try {
+                await runAsyncFunc(file.delete, { uri: chapterUri });
+            } catch (e) {}
         }
 
-        this.chapterBufferStr += chapterData.content;
-
-        if (this.chapterBufferStr.length > 20000 || isLastChunk) {
-            if (this.chapterBufferStr.length > 0 || (isLastChunk && this.isFirstWriteInChapter)) {
-                const strToWrite = this.chapterBufferStr || " "; 
-                const buffer = str2abWrite(strToWrite);
-                await runAsyncFunc(file.writeArrayBuffer, { 
-                    uri: chapterUri, 
-                    buffer, 
-                    append: !this.isFirstWriteInChapter 
-                });
-                this.isFirstWriteInChapter = false;
-                this.chapterBufferStr = "";
-            }
+        const chunkText = chapterData.content || "";
+        if (chunkText.length > 0) {
+            const buffer = str2abWrite(chunkText);
+            await runAsyncFunc(file.writeArrayBuffer, {
+                uri: chapterUri,
+                buffer,
+                append: !isFirstChunk
+            });
+        } else if (isFirstChunk && isLastChunk) {
+            await runAsyncFunc(file.writeText, {
+                uri: chapterUri,
+                text: " "
+            });
         }
+
+        state.lastChunkNum = chapterData.chunkNum;
+        this.chapterWriteState.set(chapterIndex, state);
 
         const overallProgress = (count + ((chapterData.chunkNum + 1) / chapterData.totalChunks)) / this.totalChapters;
         this.callback({ msg: "next", progress: overallProgress, filename: this.currentBookName });
 
         if (isLastChunk) {
+            state.completed = true;
+            this.chapterWriteState.set(chapterIndex, state);
+
             this.currentChapterMeta = {
                 index: chapterData.index,
                 name: chapterData.name,
                 wordCount: chapterData.wordCount
             };
+
             await this.send({ type: "chapter_chunk_complete" });
+
             if (count > 0 && count % 30 === 0) global.runGC();
         } else {
             await this.send({ type: "next_chunk" });
@@ -511,20 +558,24 @@ export default class interconnfile {
     }
 
     async completeChapterTransfer({ count }) {
-        this.pendingChapterMetas.push(this.currentChapterMeta);
-        this.currentChapterMeta = null;
+        if (this.currentChapterMeta) {
+            this.pendingChapterMetas.push(this.currentChapterMeta);
+            this.currentChapterMeta = null;
+        }
         this.currentSavingChapterIndex = -1;
 
         this.syncedChapterIndices.add(count);
         this.receivedChapters = this.syncedChapterIndices.size;
-
+        this.dirtyLindex = true;
 
         if (this.pendingChapterMetas.length >= this.BATCH_WRITE_SIZE || this.receivedChapters >= this.totalChapters) {
             await this.flushPendingChapterMetas();
+        } else {
+            await this.flushLindexIfNeeded(false);
         }
 
-        await this.send({  
-            type: "chapter_saved",  
+        await this.send({
+            type: "chapter_saved",
             count: this.receivedChapters,
             syncedCount: this.receivedChapters,
             totalCount: this.totalChapters,
@@ -533,68 +584,88 @@ export default class interconnfile {
     }
 
     async flushPendingChapterMetas() {
-        if (this.pendingChapterMetas.length === 0) return;
-
-        const currentBookDir = this.currentBookDir;
-        const totalChapters = this.totalChapters;
-        const syncedCount = this.syncedChapterIndices.size;
-        const lindexContent = this.lindexContent;
-        const metasToFlush = [...this.pendingChapterMetas];
-
-        this.pendingChapterMetas = [];
-
-        const metasByChunk = new Map();
-        for (const meta of metasToFlush) {
-            const chunkIndex = Math.floor(meta.index / this.CHAPTERS_PER_FILE) + 1;
-            if (!metasByChunk.has(chunkIndex)) metasByChunk.set(chunkIndex, []);
-            metasByChunk.get(chunkIndex).push(meta);
+        if (this.flushingMetas) return;
+        if (this.pendingChapterMetas.length === 0) {
+            await this.flushLindexIfNeeded(false);
+            return;
         }
 
-        for (const [chunkIndex, metas] of metasByChunk) {
-            const chunkUri = `${this.baseUri}${currentBookDir}/indexes/${chunkIndex}.txt`;
-            let existingContent = "";
-            try {
-                existingContent = (await runAsyncFunc(file.readText, { uri: chunkUri })).text;
-            } catch(e) {}
+        this.flushingMetas = true;
+        try {
+            const currentBookDir = this.currentBookDir;
+            const metasToFlush = [...this.pendingChapterMetas];
+            this.pendingChapterMetas = [];
 
-            const existingMap = new Map();
-            existingContent.split('\n').forEach(line => {
-                if (!line.trim()) return;
-                const parts = line.split('\t');
-                if (parts.length >= 1) {
-                    const idx = parseInt(parts[0], 10);
-                    if (!isNaN(idx)) existingMap.set(idx, line);
-                }
-            });
-
-            metas.forEach(meta => {
-                existingMap.set(meta.index, `${meta.index}\t${meta.name}\t${meta.wordCount || 0}`);
-            });
-
-            const newContent = Array.from(existingMap.keys())
-                .sort((a,b) => a-b)
-                .map(idx => existingMap.get(idx))
-                .join('\n') + '\n';
-
-            await runAsyncFunc(file.writeText, { uri: chunkUri, text: newContent });
-        }
-
-        const lindexUri = `${this.baseUri}${currentBookDir}/lindex.txt`;
-        if (lindexContent) {
-            const lines = lindexContent.split('\n');
-            lines[0] = totalChapters.toString();
-            lines[1] = syncedCount.toString();
-            const newLindexContent = lines.join('\n');
-            if (this.currentBookDir === currentBookDir) {
-                this.lindexContent = newLindexContent;
+            const metasByChunk = new Map();
+            for (const meta of metasToFlush) {
+                const chunkIndex = Math.floor(meta.index / this.CHAPTERS_PER_FILE) + 1;
+                if (!metasByChunk.has(chunkIndex)) metasByChunk.set(chunkIndex, []);
+                metasByChunk.get(chunkIndex).push(meta);
             }
-            await runAsyncFunc(file.writeText, { uri: lindexUri, text: newLindexContent });
+
+            for (const [chunkIndex, metas] of metasByChunk) {
+                const chunkUri = `${this.baseUri}${currentBookDir}/indexes/${chunkIndex}.txt`;
+
+                let existingContent = "";
+                try {
+                    existingContent = (await runAsyncFunc(file.readText, { uri: chunkUri })).text;
+                } catch (e) {}
+
+                const existingMap = new Map();
+                existingContent.split('\n').forEach(line => {
+                    if (!line.trim()) return;
+                    const parts = line.split('\t');
+                    if (parts.length >= 1) {
+                        const idx = parseInt(parts[0], 10);
+                        if (!isNaN(idx)) existingMap.set(idx, line);
+                    }
+                });
+
+                metas.forEach(meta => {
+                    existingMap.set(meta.index, `${meta.index}\t${meta.name}\t${meta.wordCount || 0}`);
+                });
+
+                const newContent = Array.from(existingMap.keys())
+                    .sort((a, b) => a - b)
+                    .map(idx => existingMap.get(idx))
+                    .join('\n') + '\n';
+
+                await runAsyncFunc(file.writeText, { uri: chunkUri, text: newContent });
+            }
+
+            await this.flushLindexIfNeeded(true);
+        } finally {
+            this.flushingMetas = false;
         }
+    }
+
+    async flushLindexIfNeeded(force = false) {
+        if (!this.lindexContent || !this.currentBookDir) return;
+
+        const now = Date.now();
+        if (!force) {
+            if (!this.dirtyLindex) return;
+            if (now - this.lastLindexFlushTime < this.LINDEX_FLUSH_INTERVAL) return;
+        }
+
+        const lindexUri = `${this.baseUri}${this.currentBookDir}/lindex.txt`;
+        const lines = this.lindexContent.split('\n');
+        lines[0] = this.totalChapters.toString();
+        lines[1] = this.syncedChapterIndices.size.toString();
+        const newLindexContent = lines.join('\n');
+
+        this.lindexContent = newLindexContent;
+        this.dirtyLindex = false;
+        this.lastLindexFlushTime = now;
+
+        await runAsyncFunc(file.writeText, { uri: lindexUri, text: newLindexContent });
     }
 
     async handleTransferComplete() {
         if (this.pendingChapterMetas.length > 0) {
             await this.flushPendingChapterMetas();
+        } else {
+            await this.flushLindexIfNeeded(true);
         }
         await this.clearCache();
         this.resetState();
@@ -638,7 +709,7 @@ export default class interconnfile {
             if (progress) {
                 await bookStorage.set(sanitizedDirName, JSON.parse(progress));
             }
-            
+
             if (readingTime) {
                 const allReadingTime = await readingTimeStorage.getAllBooksReadingTime();
                 allReadingTime[sanitizedDirName] = JSON.parse(readingTime);
@@ -667,11 +738,11 @@ export default class interconnfile {
                 this.send({ type: "progress", message: `正在删除 ${i + 1}/${total}`, count: Math.floor(((i + 1) / total) * 100) });
             } catch (error) {}
         }
-        
-        this.send({  
-            type: "success",  
-            message: `成功删除 ${successCount} 个章节`,  
-            count: successCount  
+
+        this.send({
+            type: "success",
+            message: `成功删除 ${successCount} 个章节`,
+            count: successCount
         });
     }
 
@@ -679,7 +750,7 @@ export default class interconnfile {
         try {
             const dirName = this.generateDirName(filename);
             const bookDirUri = `${this.baseUri}${dirName}`;
-            
+
             try { await runAsyncFunc(file.rmdir, { uri: bookDirUri, recursive: true }); } catch (e) {}
             try { await bookStorage.removeBook(dirName); } catch (e) {}
 
@@ -694,10 +765,10 @@ export default class interconnfile {
             const deviceInfo = await runAsyncFunc(device.getInfo);
             const totalData = await runAsyncFunc(device.getTotalStorage);
             const availData = await runAsyncFunc(device.getAvailableStorage);
-            
+
             const storageInfo = calculateStorageInfo(
-                totalData ? totalData.totalStorage : 0, 
-                availData ? availData.availableStorage : 0, 
+                totalData ? totalData.totalStorage : 0,
+                availData ? availData.availableStorage : 0,
                 deviceInfo ? deviceInfo.product : null
             );
 
