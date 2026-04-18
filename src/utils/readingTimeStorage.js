@@ -49,6 +49,11 @@ async function isReadingTimeRecordingEnabled() {
     return recordingEnabledCache;
 }
 
+function toSafeNumber(value, fallback = 0) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+}
+
 function ensureBookData(bookData) {
     if (!bookData || typeof bookData !== 'object') {
         return {
@@ -63,7 +68,7 @@ function ensureBookData(bookData) {
 
     if (!Array.isArray(bookData.sessions)) bookData.sessions = [];
     if (!bookData.dailySeconds || typeof bookData.dailySeconds !== 'object') bookData.dailySeconds = {};
-    if (typeof bookData.totalSeconds !== 'number') bookData.totalSeconds = Number(bookData.totalSeconds) || 0;
+    if (typeof bookData.totalSeconds !== 'number') bookData.totalSeconds = toSafeNumber(bookData.totalSeconds, 0);
     if (typeof bookData.sessionCount !== 'number') bookData.sessionCount = Array.isArray(bookData.sessions) ? bookData.sessions.length : 0;
     if (!('lastReadDate' in bookData)) bookData.lastReadDate = null;
     if (!('firstReadDate' in bookData)) bookData.firstReadDate = null;
@@ -86,8 +91,9 @@ function compactBookSessions(bookData) {
 
     toCompress.forEach(session => {
         if (!session || !session.date) return;
-        const duration = session.duration || 0;
-        bookData.dailySeconds[session.date] = (bookData.dailySeconds[session.date] || 0) + duration;
+        const duration = toSafeNumber(session.duration, 0);
+        if (!Number.isFinite(duration) || duration <= 0) return;
+        bookData.dailySeconds[session.date] = (toSafeNumber(bookData.dailySeconds[session.date], 0)) + duration;
     });
 
     return bookData;
@@ -197,17 +203,18 @@ function upsertSession(bookData, session) {
 }
 
 function updateAggregates(bookData, duration, sessionDate, startTime, endTime) {
-    bookData.totalSeconds = (bookData.totalSeconds || 0) + duration;
-    bookData.sessionCount = (bookData.sessionCount || 0) + 1;
+    const safeDuration = Math.max(0, toSafeNumber(duration, 0));
+    bookData.totalSeconds = Math.max(0, toSafeNumber(bookData.totalSeconds, 0)) + safeDuration;
+    bookData.sessionCount = Math.max(0, toSafeNumber(bookData.sessionCount, 0)) + 1;
     bookData.lastReadDate = sessionDate;
     if (!bookData.firstReadDate) bookData.firstReadDate = sessionDate;
 
-    bookData.dailySeconds[sessionDate] = (bookData.dailySeconds[sessionDate] || 0) + duration;
+    bookData.dailySeconds[sessionDate] = Math.max(0, toSafeNumber(bookData.dailySeconds[sessionDate], 0)) + safeDuration;
 
     upsertSession(bookData, {
         startTime,
         endTime,
-        duration,
+        duration: safeDuration,
         date: sessionDate
     });
 }
@@ -279,10 +286,12 @@ async function getReadingTime(bookName) {
 }
 
 function formatDuration(seconds) {
-    if (!seconds || seconds < 0) return '0分钟';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    const safeSeconds = Math.max(0, Math.floor(toSafeNumber(seconds, 0)));
+    if (safeSeconds === 0) return '0分钟';
+
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const secs = safeSeconds % 60;
     if (hours > 0) {
         return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
     }
@@ -318,7 +327,7 @@ function calculateStatsFromDaily(dailySeconds = {}, sessions = [], totalSecondsO
     const today = getTodayDateString();
     const weekStart = getWeekStartDate();
     const dailyTotals = {};
-    let totalSeconds = totalSecondsOverride !== undefined ? totalSecondsOverride : 0;
+    let totalSeconds = totalSecondsOverride !== undefined ? Math.max(0, toSafeNumber(totalSecondsOverride, 0)) : 0;
     let todaySeconds = 0;
     let weekSeconds = 0;
     let maxDailySeconds = 0;
@@ -329,7 +338,7 @@ function calculateStatsFromDaily(dailySeconds = {}, sessions = [], totalSecondsO
     const dailyKeys = Object.keys(dailySeconds || {});
     if (dailyKeys.length > 0) {
         dailyKeys.forEach(date => {
-            const seconds = dailySeconds[date] || 0;
+            const seconds = Math.max(0, toSafeNumber(dailySeconds[date], 0));
             dailyTotals[date] = seconds;
             totalDays.add(date);
 
@@ -346,7 +355,7 @@ function calculateStatsFromDaily(dailySeconds = {}, sessions = [], totalSecondsO
         sessions.forEach(session => {
             const date = session.date;
             if (!date) return;
-            const duration = session.duration || 0;
+            const duration = Math.max(0, toSafeNumber(session.duration, 0));
 
             if (calcTotal) totalSeconds += duration;
             totalDays.add(date);
@@ -432,16 +441,16 @@ function getLast7DaysReadingTime(sessionsOrBookData) {
 
     if (sessionsOrBookData.dailySeconds && typeof sessionsOrBookData.dailySeconds === 'object') {
         dates.forEach(date => {
-            dailyData[date] = Math.floor((sessionsOrBookData.dailySeconds[date] || 0) / 60);
+            dailyData[date] = Math.max(0, toSafeNumber(sessionsOrBookData.dailySeconds[date], 0));
         });
-        return dates.map(date => dailyData[date]);
+        return dates.map(date => Math.floor(dailyData[date] / 60));
     }
 
     if (Array.isArray(sessionsOrBookData)) {
         sessionsOrBookData.forEach(session => {
             const date = session.date;
             if (dailyData.hasOwnProperty(date)) {
-                dailyData[date] += (session.duration || 0);
+                dailyData[date] += Math.max(0, toSafeNumber(session.duration, 0));
             }
         });
         return dates.map(date => Math.floor(dailyData[date] / 60));
@@ -462,13 +471,13 @@ function getLast7DaysGlobalReadingTime(allBooksData) {
 
         if (bookData.dailySeconds && typeof bookData.dailySeconds === 'object') {
             dates.forEach(date => {
-                dailyData[date] += (bookData.dailySeconds[date] || 0);
+                dailyData[date] += Math.max(0, toSafeNumber(bookData.dailySeconds[date], 0));
             });
         } else if (bookData.sessions && bookData.sessions.length > 0) {
             bookData.sessions.forEach(session => {
                 const date = session.date;
                 if (dailyData.hasOwnProperty(date)) {
-                    dailyData[date] += (session.duration || 0);
+                    dailyData[date] += Math.max(0, toSafeNumber(session.duration, 0));
                 }
             });
         }
