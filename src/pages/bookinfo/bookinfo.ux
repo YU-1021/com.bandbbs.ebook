@@ -10,15 +10,18 @@
 				<marquee if="{{bookinfoMarqueeEnabled}}" class="item-value" scrollamount="50" text-offset="25">{{fileName}}</marquee>
 				<text else class="item-value">{{fileName}}</text>
 			</list-item>
+
 			<list-item class="item item3" type="info" if="{{author}}">
 				<text class="item-title" static>作者</text>
 				<marquee if="{{bookinfoMarqueeEnabled}}" class="item-value" scrollamount="50" text-offset="25">{{author}}</marquee>
 				<text else class="item-value">{{author}}</text>
 			</list-item>
+
 			<list-item class="item item3" type="info" style="height: 280px; flex-direction: column;">
 				<text class="item-title" static>占用空间</text>
 				<text class="item-value" style="width: auto;">{{totalStorage}}</text>
 				<div static style="width: 100%; height: 1px; background-color: rgba(255,255,255,0.2); margin: 8px 0px;"></div>
+
 				<div style="display: flex; flex-direction: row; justify-content: space-between; width: 100%;">
 					<text class="item-title" style="font-size: 24px;" static>章节占用</text>
 					<text class="item-value" style="font-size: 24px; width: auto;">{{chapterStorage}}</text>
@@ -36,26 +39,32 @@
 					<text class="item-value" style="font-size: 24px; width: auto;">{{bookmarkIndexStorage}}</text>
 				</div>
 			</list-item>
+
 			<list-item class="item item3" type="info">
 				<text class="item-title" static>同步进度</text>
 				<text class="item-value">{{syncProgress}}</text>
 			</list-item>
+
 			<list-item class="item item3" type="info">
 				<text class="item-title" static>总字数</text>
 				<text class="item-value">{{wordCount}}</text>
 			</list-item>
+
 			<list-item class="item item3" type="info" if="{{bookStatus}}">
 				<text class="item-title" static>状态</text>
 				<text class="item-value">{{bookStatus}}</text>
 			</list-item>
+
 			<list-item class="item item3" type="info" if="{{category}}">
 				<text class="item-title" static>分类</text>
 				<text class="item-value">{{category}}</text>
 			</list-item>
+
 			<list-item class="item item3" type="info" if="{{localCategory}}">
 				<text class="item-title" static>本地分类</text>
 				<text class="item-value">{{localCategory}}</text>
 			</list-item>
+
 			<list-item class="item item3" type="summary" if="{{summary}}" @click="showSummary">
 				<text class="item-title" static>书籍简介</text>
 				<text class="item-value" style="color: rgba(255,255,255,0.8);" static>点击查看 →</text>
@@ -90,7 +99,7 @@ export default {
 		indexStorage: '加载中...',
 		bookmarkIndexStorage: '加载中...',
 		wordCount: '加载中...',
-		nowTime: "00:00",
+		nowTime: '00:00',
 		timer: null,
 		hasCover: false,
 		coverPath: '',
@@ -101,18 +110,18 @@ export default {
 		localCategory: '',
 		syncProgress: '计算中...',
 		timeFormat: '24h',
-		bookinfoMarqueeEnabled: true
+		bookinfoMarqueeEnabled: true,
+		heavyTaskStarted: false
 	},
 	protected: {
-		name: '' // 移除了完全未被使用的 cPath
+		name: ''
 	},
-	
+
 	onInit() {
-		// 移除了 onInit 中的 global.runGC()。页面初始化时进行垃圾回收会严重阻塞渲染，导致打开详情页卡顿
 		this.loadTimeFormat();
 		this.loadFileInfo();
 	},
-	
+
 	onShow() {
 		storage.get({
 			key: 'EBOOK_BOOKINFO_MARQUEE_ENABLED',
@@ -124,13 +133,12 @@ export default {
 			}
 		});
 	},
-	
+
 	onDestroy() {
 		if (this.timer) {
 			clearInterval(this.timer);
 			this.timer = null;
 		}
-		global.runGC(); // 退出页面时回收内存是合理的
 	},
 
 	loadTimeFormat() {
@@ -144,9 +152,7 @@ export default {
 				this.updateTime();
 			}
 		});
-		
-		// 性能优化：时间显示只精确到了分钟 (00:00)，原代码每 1000ms(1秒) 刷新一次是极大的性能和电量浪费
-		// 现已改为 60000ms(1分钟) 刷新一次
+
 		this.timer = setInterval(() => {
 			this.updateTime();
 		}, 60000);
@@ -156,8 +162,9 @@ export default {
 		const date = new Date();
 		let hours = date.getHours();
 		let minutes = date.getMinutes();
+
 		if (this.timeFormat === '12h') {
-			let ampm = hours >= 12 ? '下午' : '上午';
+			const ampm = hours >= 12 ? '下午' : '上午';
 			hours = hours % 12 || 12;
 			minutes = minutes < 10 ? '0' + minutes : minutes;
 			this.nowTime = `${ampm} ${hours}:${minutes}`;
@@ -188,39 +195,55 @@ export default {
 		const bookInfoUri = `${bookDirUri}book_info.json`;
 		const indexesUri = `${bookDirUri}indexes/`;
 		const lindexUri = `${bookDirUri}lindex.txt`;
-		let coverUri = '';
 
-		file.readText({
-			uri: bookInfoUri,
-			success: async (data) => {
-				try {
-					const info = JSON.parse(data.text);
-					this.fileName = info.name || this.name;
-					this.wordCount = info.wordCount ? `${info.wordCount} 字` : '未知';
-					this.hasCover = info.hasCover || false;
-					if (this.hasCover && info.coverFileName) {
-						this.coverPath = bookDirUri + info.coverFileName;
-						coverUri = this.coverPath;
-					}
-					this.author = info.author || '';
-					this.summary = info.summary || '';
-					this.bookStatus = info.bookStatus || '';
-					this.category = info.category || '';
-					this.localCategory = info.localCategory || '';
+		try {
+			const data = await runAsyncFunc(file.readText, {
+				uri: bookInfoUri
+			});
 
-					await this.calculateSyncProgress();
-					await this.calculateStorage(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri);
-				} catch (e) {
-					this.handleLoadFail();
-				}
-			},
-			fail: () => {
-				this.handleLoadFail();
-			}
-		});
+			const info = JSON.parse(data.text);
+			this.applyBookInfo(info, bookDirUri);
+
+			this.deferHeavyTasks({
+				bookContentDirUri,
+				bookInfoUri,
+				indexesUri,
+				lindexUri,
+				coverUri: this.hasCover && info.coverFileName ? this.coverPath : ''
+			});
+		} catch (e) {
+			this.handleLoadFail();
+		}
 	},
 
-	// 提取出冗余的失败处理逻辑
+	applyBookInfo(info, bookDirUri) {
+		this.fileName = info.name || this.name;
+		this.wordCount = info.wordCount ? `${info.wordCount} 字` : '未知';
+		this.hasCover = !!info.hasCover;
+
+		if (this.hasCover && info.coverFileName) {
+			this.coverPath = bookDirUri + info.coverFileName;
+		}
+
+		this.author = info.author || '';
+		this.summary = info.summary || '';
+		this.bookStatus = info.bookStatus || '';
+		this.category = info.category || '';
+		this.localCategory = info.localCategory || '';
+	},
+
+	deferHeavyTasks({ bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri }) {
+		if (this.heavyTaskStarted) return;
+		this.heavyTaskStarted = true;
+
+		setTimeout(async () => {
+			await Promise.all([
+				this.calculateSyncProgress(),
+				this.calculateStorage(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri)
+			]);
+		}, 0);
+	},
+
 	handleLoadFail() {
 		this.fileName = this.name;
 		this.wordCount = '加载失败';
@@ -238,6 +261,7 @@ export default {
 
 	async calculateStorage(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri) {
 		this.resetStorageStatus('计算中...');
+
 		try {
 			const [chapterSize, coverSize, indexSize, bookmarkSize] = await Promise.all([
 				this.getDirSize(bookContentDirUri),
@@ -259,7 +283,7 @@ export default {
 	async getFileSize(uri) {
 		try {
 			const res = await runAsyncFunc(file.get, { uri });
-			return res ? res.length : 0;
+			return res ? (res.length || 0) : 0;
 		} catch (e) {
 			return 0;
 		}
@@ -267,12 +291,32 @@ export default {
 
 	async getDirSize(uri) {
 		try {
-			const res = await runAsyncFunc(file.list, { uri });
-			if (!res || !res.fileList) return 0;
-			return res.fileList.reduce((acc, f) => acc + (f.type === 'file' ? f.length : 0), 0);
+			const res = await runAsyncFunc(file.get, {
+				uri,
+				recursive: true
+			});
+			return this.calcNodeSize(res);
 		} catch (e) {
 			return 0;
 		}
+	},
+
+	calcNodeSize(node) {
+		if (!node) return 0;
+
+		if (node.type === 'file') {
+			return node.length || 0;
+		}
+
+		if (node.type === 'dir' && Array.isArray(node.subFiles)) {
+			return node.subFiles.reduce((sum, item) => sum + this.calcNodeSize(item), 0);
+		}
+
+		if (Array.isArray(node.subFiles)) {
+			return node.subFiles.reduce((sum, item) => sum + this.calcNodeSize(item), 0);
+		}
+
+		return 0;
 	},
 
 	async getIndexTotalSize(bookInfoUri, lindexUri, indexesUri) {
@@ -292,6 +336,7 @@ export default {
 		try {
 			const bookshelf = await bookStorage.load();
 			if (!bookshelf || !bookshelf.books) return 0;
+
 			const book = bookshelf.books.find(b => b.dirName === this.name);
 			if (book && book.progress && book.progress.bookmarks) {
 				return JSON.stringify(book.progress.bookmarks).length;
@@ -303,18 +348,21 @@ export default {
 	},
 
 	async calculateSyncProgress() {
-		const version = await chapterManager.checkVersion(this.name);
-		if (version === 'none') {
-			this.syncProgress = '无章节信息';
-			return;
-		}
 		try {
+			const version = await chapterManager.checkVersion(this.name);
+			if (version === 'none') {
+				this.syncProgress = '无章节信息';
+				return;
+			}
+
 			const bookIndex = await chapterManager.loadBookIndex(this.name);
 			const { totalChapters, syncedChapters } = bookIndex;
+
 			if (typeof totalChapters !== 'number' || totalChapters <= 0) {
 				this.syncProgress = '无需同步';
 				return;
 			}
+
 			const progress = Math.floor((syncedChapters / totalChapters) * 100);
 			this.syncProgress = `${progress}% (${syncedChapters}/${totalChapters}章)`;
 		} catch (e) {
@@ -333,13 +381,15 @@ export default {
 </script>
 
 <style>
-  @import '../../common/style.css';
+@import '../../common/style.css';
+
 .item-title {
 	font-size: 28px;
 	line-height: 37px;
 	font-weight: bold;
 	color: rgba(255,255,255,0.6);
 }
+
 .item-value {
 	font-size: 32px;
 	line-height: 40px;
@@ -348,6 +398,7 @@ export default {
 	color: white;
 	lines: 1;
 }
+
 .item3 {
 	flex-direction: column;
 	align-items: flex-start;
