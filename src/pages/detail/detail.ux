@@ -447,6 +447,7 @@ export default {
 
 		this.lineHeight = parseInt((-0.01) * (this.fontSize ** 2) + 1.62 * this.fontSize - 3.23)
 		this.updateScrollHeight()
+		this.updatePageDisplay()
 
 		if (this.readMode === 'nostalgic' && this.nostalgicText) {
 			this.getNostalgicBoxHeight('box1', (h) => {
