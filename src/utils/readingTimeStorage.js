@@ -1,11 +1,22 @@
 import storage from '../utils/storage.js';
 
 const READING_TIME_KEY = 'EBOOK_READING_TIME_DATA';
+const RECORDING_ENABLED_KEY = 'EBOOK_READING_TIME_RECORDING';
+
+const MAX_RECENT_SESSIONS = 60;
+const COMPRESS_BATCH_SIZE = 20;
+const SAVE_DEBOUNCE_MS = 1500;
 
 let currentReadingBook = null;
 let sessionStartTime = 0;
 let readingTimeCache = null;
 let recordingEnabledCache = null;
+let saveTimer = null;
+let saveInFlight = false;
+let dirty = false;
+let pendingSavePromise = null;
+let pendingSaveResolve = null;
+let pendingSaveReject = null;
 
 function storagePromise(method, params = {}) {
     return new Promise((resolve) => {
@@ -17,11 +28,19 @@ function storagePromise(method, params = {}) {
     });
 }
 
+function normalizeDateString(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function todayDateString() {
+    return normalizeDateString(new Date());
+}
+
 async function isReadingTimeRecordingEnabled() {
     if (recordingEnabledCache !== null) {
         return recordingEnabledCache;
     }
-    const result = await storagePromise('get', { key: 'EBOOK_READING_TIME_RECORDING' });
+    const result = await storagePromise('get', { key: RECORDING_ENABLED_KEY });
     if (result.status === 'success' && result.data !== undefined && result.data !== '') {
         recordingEnabledCache = result.data === 'true';
     } else {
@@ -30,26 +49,77 @@ async function isReadingTimeRecordingEnabled() {
     return recordingEnabledCache;
 }
 
+function ensureBookData(bookData) {
+    if (!bookData || typeof bookData !== 'object') {
+        return {
+            totalSeconds: 0,
+            sessionCount: 0,
+            sessions: [],
+            dailySeconds: {},
+            lastReadDate: null,
+            firstReadDate: null
+        };
+    }
+
+    if (!Array.isArray(bookData.sessions)) bookData.sessions = [];
+    if (!bookData.dailySeconds || typeof bookData.dailySeconds !== 'object') bookData.dailySeconds = {};
+    if (typeof bookData.totalSeconds !== 'number') bookData.totalSeconds = Number(bookData.totalSeconds) || 0;
+    if (typeof bookData.sessionCount !== 'number') bookData.sessionCount = Array.isArray(bookData.sessions) ? bookData.sessions.length : 0;
+    if (!('lastReadDate' in bookData)) bookData.lastReadDate = null;
+    if (!('firstReadDate' in bookData)) bookData.firstReadDate = null;
+
+    return bookData;
+}
+
+function compactBookSessions(bookData) {
+    if (!bookData || !Array.isArray(bookData.sessions)) return bookData;
+
+    if (bookData.sessions.length <= MAX_RECENT_SESSIONS) return bookData;
+
+    const overflow = bookData.sessions.length - MAX_RECENT_SESSIONS;
+    const compressCount = Math.max(COMPRESS_BATCH_SIZE, overflow);
+    const toCompress = bookData.sessions.splice(0, compressCount);
+
+    if (!bookData.dailySeconds || typeof bookData.dailySeconds !== 'object') {
+        bookData.dailySeconds = {};
+    }
+
+    toCompress.forEach(session => {
+        if (!session || !session.date) return;
+        const duration = session.duration || 0;
+        bookData.dailySeconds[session.date] = (bookData.dailySeconds[session.date] || 0) + duration;
+    });
+
+    return bookData;
+}
+
 async function getAllReadingTime() {
     if (readingTimeCache !== null) {
         return readingTimeCache;
     }
+
     const result = await storagePromise('get', { key: READING_TIME_KEY });
     if (result.status === 'success' && result.data) {
         try {
-            readingTimeCache = JSON.parse(result.data);
+            const parsed = JSON.parse(result.data);
+            const normalized = {};
+            Object.keys(parsed || {}).forEach(bookName => {
+                const bookData = ensureBookData(parsed[bookName]);
+                normalized[bookName] = compactBookSessions(bookData);
+            });
+            readingTimeCache = normalized;
             return readingTimeCache;
         } catch (e) {
             readingTimeCache = {};
             return readingTimeCache;
         }
     }
+
     readingTimeCache = {};
     return readingTimeCache;
 }
 
-async function saveReadingTime(readingTimeData) {
-    readingTimeCache = readingTimeData;
+function doSaveReadingTime(readingTimeData) {
     return new Promise((resolve, reject) => {
         storage.set({
             key: READING_TIME_KEY,
@@ -60,9 +130,92 @@ async function saveReadingTime(readingTimeData) {
     });
 }
 
+function flushPendingSave() {
+    if (!dirty || !readingTimeCache) {
+        if (pendingSaveResolve) {
+            pendingSaveResolve();
+            pendingSaveResolve = null;
+            pendingSaveReject = null;
+            pendingSavePromise = null;
+        }
+        return Promise.resolve();
+    }
+
+    if (saveInFlight) {
+        return pendingSavePromise || Promise.resolve();
+    }
+
+    saveInFlight = true;
+
+    const savePromise = doSaveReadingTime(readingTimeCache)
+        .then(() => {
+            dirty = false;
+            saveInFlight = false;
+            if (pendingSaveResolve) {
+                pendingSaveResolve();
+                pendingSaveResolve = null;
+                pendingSaveReject = null;
+                pendingSavePromise = null;
+            }
+        })
+        .catch((err) => {
+            saveInFlight = false;
+            if (pendingSaveReject) {
+                pendingSaveReject(err);
+                pendingSaveResolve = null;
+                pendingSaveReject = null;
+                pendingSavePromise = null;
+            }
+        });
+
+    pendingSavePromise = savePromise;
+    return savePromise;
+}
+
+function scheduleSave() {
+    dirty = true;
+
+    if (!pendingSavePromise) {
+        pendingSavePromise = new Promise((resolve, reject) => {
+            pendingSaveResolve = resolve;
+            pendingSaveReject = reject;
+        });
+    }
+
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+        saveTimer = null;
+        flushPendingSave();
+    }, SAVE_DEBOUNCE_MS);
+
+    return pendingSavePromise;
+}
+
+function upsertSession(bookData, session) {
+    bookData.sessions.push(session);
+    compactBookSessions(bookData);
+}
+
+function updateAggregates(bookData, duration, sessionDate, startTime, endTime) {
+    bookData.totalSeconds = (bookData.totalSeconds || 0) + duration;
+    bookData.sessionCount = (bookData.sessionCount || 0) + 1;
+    bookData.lastReadDate = sessionDate;
+    if (!bookData.firstReadDate) bookData.firstReadDate = sessionDate;
+
+    bookData.dailySeconds[sessionDate] = (bookData.dailySeconds[sessionDate] || 0) + duration;
+
+    upsertSession(bookData, {
+        startTime,
+        endTime,
+        duration,
+        date: sessionDate
+    });
+}
+
 async function recordReadingStart(bookName) {
     if (!bookName) return;
     if (!(await isReadingTimeRecordingEnabled())) return;
+
     currentReadingBook = bookName;
     sessionStartTime = Date.now();
 }
@@ -71,57 +224,48 @@ async function recordReadingEnd(bookName) {
     if (!bookName || bookName !== currentReadingBook) return;
     if (!(await isReadingTimeRecordingEnabled())) return;
     if (sessionStartTime === 0) return;
-    
-    const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
+
+    const endTime = Date.now();
+    const duration = Math.floor((endTime - sessionStartTime) / 1000);
+
     sessionStartTime = 0;
     currentReadingBook = null;
-    
+
     if (duration < 10) return;
-    
+
     try {
         const readingTimeData = await getAllReadingTime();
-        let bookData = readingTimeData[bookName];
-        if (!bookData) {
-            bookData = {
-                totalSeconds: 0,
-                sessions: [],
-                lastReadDate: null,
-                firstReadDate: null
-            };
-            readingTimeData[bookName] = bookData;
-        }
-        bookData.totalSeconds = (bookData.totalSeconds || 0) + duration;
-        
-        const now = Date.now();
-        const sessionDate = new Date(now).toISOString().split('T')[0];
-        
-        const session = {
-            startTime: now - duration * 1000,
-            endTime: now,
-            duration: duration,
-            date: sessionDate
-        };
-        
-        if (!bookData.sessions) bookData.sessions = [];
-        bookData.sessions.push(session);
-        
-        bookData.lastReadDate = sessionDate;
-        if (!bookData.firstReadDate) bookData.firstReadDate = sessionDate;
-        
-        await saveReadingTime(readingTimeData);
+        let bookData = ensureBookData(readingTimeData[bookName]);
+        readingTimeData[bookName] = bookData;
+
+        const sessionDate = todayDateString();
+        updateAggregates(bookData, duration, sessionDate, endTime - duration * 1000, endTime);
+
+        await scheduleSave();
     } catch (e) {}
 }
 
 async function saveCurrentSession(bookName) {
     if (!bookName || bookName !== currentReadingBook) return;
     if (sessionStartTime === 0) return;
-    
+
     const now = Date.now();
     const duration = Math.floor((now - sessionStartTime) / 1000);
     if (duration < 10) return;
-    
-    await recordReadingEnd(bookName);
-    await recordReadingStart(bookName);
+
+    try {
+        const readingTimeData = await getAllReadingTime();
+        let bookData = ensureBookData(readingTimeData[bookName]);
+        readingTimeData[bookName] = bookData;
+
+        const sessionDate = todayDateString();
+        updateAggregates(bookData, duration, sessionDate, sessionStartTime, now);
+
+        sessionStartTime = now;
+        currentReadingBook = bookName;
+
+        await scheduleSave();
+    } catch (e) {}
 }
 
 async function getReadingTime(bookName) {
@@ -147,7 +291,7 @@ function formatDuration(seconds) {
 }
 
 function getTodayDateString() {
-    return new Date().toISOString().split('T')[0];
+    return todayDateString();
 }
 
 function getWeekStartDate() {
@@ -159,37 +303,65 @@ function getWeekStartDate() {
     return monday.toISOString().split('T')[0];
 }
 
-function calculateStatsCore(sessions, totalSecondsOverride) {
+function getLast7DaysDateStrings() {
+    const dates = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        dates.push(date.toISOString().split('T')[0]);
+    }
+    return dates;
+}
+
+function calculateStatsFromDaily(dailySeconds = {}, sessions = [], totalSecondsOverride) {
     const today = getTodayDateString();
     const weekStart = getWeekStartDate();
+    const dailyTotals = {};
     let totalSeconds = totalSecondsOverride !== undefined ? totalSecondsOverride : 0;
     let todaySeconds = 0;
     let weekSeconds = 0;
     let maxDailySeconds = 0;
-    const dailyTotals = {};
     const totalDays = new Set();
     let firstDate = null;
     let lastDate = null;
-    
-    if (sessions && sessions.length > 0) {
+
+    const dailyKeys = Object.keys(dailySeconds || {});
+    if (dailyKeys.length > 0) {
+        dailyKeys.forEach(date => {
+            const seconds = dailySeconds[date] || 0;
+            dailyTotals[date] = seconds;
+            totalDays.add(date);
+
+            if (totalSecondsOverride === undefined) {
+                totalSeconds += seconds;
+            }
+            if (date === today) todaySeconds += seconds;
+            if (date >= weekStart) weekSeconds += seconds;
+            if (!firstDate || date < firstDate) firstDate = date;
+            if (!lastDate || date > lastDate) lastDate = date;
+        });
+    } else if (sessions && sessions.length > 0) {
         const calcTotal = totalSecondsOverride === undefined;
         sessions.forEach(session => {
             const date = session.date;
             if (!date) return;
-            if (calcTotal) totalSeconds += (session.duration || 0);
+            const duration = session.duration || 0;
+
+            if (calcTotal) totalSeconds += duration;
             totalDays.add(date);
-            dailyTotals[date] = (dailyTotals[date] || 0) + (session.duration || 0);
-            if (date === today) todaySeconds += (session.duration || 0);
-            if (date >= weekStart) weekSeconds += (session.duration || 0);
+            dailyTotals[date] = (dailyTotals[date] || 0) + duration;
+            if (date === today) todaySeconds += duration;
+            if (date >= weekStart) weekSeconds += duration;
             if (!firstDate || date < firstDate) firstDate = date;
             if (!lastDate || date > lastDate) lastDate = date;
         });
     }
-    
+
     Object.values(dailyTotals).forEach(val => {
         if (val > maxDailySeconds) maxDailySeconds = val;
     });
-    
+
     let totalWeeks = 1;
     if (firstDate && lastDate) {
         const first = new Date(firstDate);
@@ -197,9 +369,9 @@ function calculateStatsCore(sessions, totalSecondsOverride) {
         const daysDiff = Math.ceil((last - first) / (1000 * 60 * 60 * 24)) + 1;
         totalWeeks = Math.ceil(daysDiff / 7) || 1;
     }
-    
+
     const totalDaysCount = totalDays.size || 1;
-    
+
     return {
         totalSeconds,
         totalDays: totalDays.size,
@@ -215,29 +387,122 @@ function calculateStatsCore(sessions, totalSecondsOverride) {
 }
 
 function calculateGlobalStats(allBooksData) {
-    let allSessions = [];
+    let combinedDailySeconds = {};
     let combinedTotalSeconds = 0;
-    Object.values(allBooksData).forEach(bookData => {
+    let combinedSessions = [];
+
+    Object.values(allBooksData || {}).forEach(bookData => {
+        if (!bookData) return;
         if (bookData.totalSeconds) combinedTotalSeconds += bookData.totalSeconds;
-        if (bookData.sessions && bookData.sessions.length > 0) {
-            allSessions = allSessions.concat(bookData.sessions);
+
+        if (bookData.dailySeconds && typeof bookData.dailySeconds === 'object') {
+            Object.entries(bookData.dailySeconds).forEach(([date, seconds]) => {
+                combinedDailySeconds[date] = (combinedDailySeconds[date] || 0) + (seconds || 0);
+            });
+        } else if (bookData.sessions && bookData.sessions.length > 0) {
+            combinedSessions = combinedSessions.concat(bookData.sessions);
         }
     });
-    return calculateStatsCore(allSessions, combinedTotalSeconds);
+
+    if (Object.keys(combinedDailySeconds).length > 0) {
+        return calculateStatsFromDaily(combinedDailySeconds, [], combinedTotalSeconds);
+    }
+    return calculateStatsFromDaily({}, combinedSessions, combinedTotalSeconds);
 }
 
 function calculateBookStats(bookData) {
-    if (!bookData) return calculateStatsCore([]);
-    const stats = calculateStatsCore(bookData.sessions || [], bookData.totalSeconds);
-    stats.firstReadDate = bookData.firstReadDate || '';
-    stats.lastReadDate = bookData.lastReadDate || '';
+    if (!bookData) return calculateStatsFromDaily({}, []);
+    const normalized = ensureBookData(bookData);
+    const stats = calculateStatsFromDaily(normalized.dailySeconds || {}, normalized.sessions || [], normalized.totalSeconds);
+    stats.firstReadDate = normalized.firstReadDate || '';
+    stats.lastReadDate = normalized.lastReadDate || '';
     return stats;
 }
 
+<<<<<<< HEAD
+=======
+function getLast7DaysReadingTime(sessionsOrBookData) {
+    const dates = getLast7DaysDateStrings();
+    const dailyData = {};
+    dates.forEach(date => {
+        dailyData[date] = 0;
+    });
+
+    if (!sessionsOrBookData) {
+        return dates.map(date => 0);
+    }
+
+    if (sessionsOrBookData.dailySeconds && typeof sessionsOrBookData.dailySeconds === 'object') {
+        dates.forEach(date => {
+            dailyData[date] = Math.floor((sessionsOrBookData.dailySeconds[date] || 0) / 60);
+        });
+        return dates.map(date => dailyData[date]);
+    }
+
+    if (Array.isArray(sessionsOrBookData)) {
+        sessionsOrBookData.forEach(session => {
+            const date = session.date;
+            if (dailyData.hasOwnProperty(date)) {
+                dailyData[date] += (session.duration || 0);
+            }
+        });
+        return dates.map(date => Math.floor(dailyData[date] / 60));
+    }
+
+    return dates.map(date => 0);
+}
+
+function getLast7DaysGlobalReadingTime(allBooksData) {
+    const dates = getLast7DaysDateStrings();
+    const dailyData = {};
+    dates.forEach(date => {
+        dailyData[date] = 0;
+    });
+
+    Object.values(allBooksData || {}).forEach(bookData => {
+        if (!bookData) return;
+
+        if (bookData.dailySeconds && typeof bookData.dailySeconds === 'object') {
+            dates.forEach(date => {
+                dailyData[date] += (bookData.dailySeconds[date] || 0);
+            });
+        } else if (bookData.sessions && bookData.sessions.length > 0) {
+            bookData.sessions.forEach(session => {
+                const date = session.date;
+                if (dailyData.hasOwnProperty(date)) {
+                    dailyData[date] += (session.duration || 0);
+                }
+            });
+        }
+    });
+
+    return dates.map(date => Math.floor(dailyData[date] / 60));
+}
+
+async function saveReadingTime(readingTimeData) {
+    readingTimeCache = readingTimeData || {};
+    dirty = false;
+
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
+
+    return doSaveReadingTime(readingTimeCache);
+}
+
+>>>>>>> 3a748aa (阅读时长)
 async function clearAllReadingTime() {
     readingTimeCache = {};
     currentReadingBook = null;
     sessionStartTime = 0;
+    dirty = false;
+
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
+
     return new Promise((resolve, reject) => {
         storage.set({
             key: READING_TIME_KEY,
