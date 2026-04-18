@@ -6,6 +6,7 @@
 				书籍详情
 			  </text>
 			</list-item>
+
 			<list-item if="{{hasCover}}" type="cover" style="height: 255px; align-items: center; justify-content: center; margin-bottom: 12px;">
 				<img src="{{coverPath}}" style="width: 160px;height: 213px;object-fit: cover;border-radius: 12px;" />
 			</list-item>
@@ -15,11 +16,13 @@
 				<marquee if="{{bookinfoMarqueeEnabled}}" class="item-value" scrollamount="50" text-offset="25">{{fileName}}</marquee>
 				<text else class="item-value">{{fileName}}</text>
 			</list-item>
+
 			<list-item class="item item-a" type="info" if="{{author}}">
 				<text class="item-title" static>作者</text>
 				<marquee if="{{bookinfoMarqueeEnabled}}" class="item-value" scrollamount="50" text-offset="25">{{author}}</marquee>
 				<text else class="item-value">{{author}}</text>
 			</list-item>
+
 			<list-item class="item" type="info" style="height: 280px; flex-direction: column;">
 				<text class="item-title" static>占用空间</text>
 				<text class="item-value" style="width: auto;">{{totalStorage}}</text>
@@ -41,26 +44,32 @@
 					<text class="item-value" style="font-size: 24px; width: auto;">{{bookmarkIndexStorage}}</text>
 				</div>
 			</list-item>
+
 			<list-item class="item item-a" type="info">
 				<text class="item-title" static>同步进度</text>
 				<text class="item-value">{{syncProgress}}</text>
 			</list-item>
+
 			<list-item class="item item-a" type="info">
 				<text class="item-title" static>总字数</text>
 				<text class="item-value">{{wordCount}}</text>
 			</list-item>
+
 			<list-item class="item item-a" type="info" if="{{bookStatus}}">
 				<text class="item-title" static>状态</text>
 				<text class="item-value">{{bookStatus}}</text>
 			</list-item>
+
 			<list-item class="item item-a" type="info" if="{{category}}">
 				<text class="item-title" static>分类</text>
 				<text class="item-value">{{category}}</text>
 			</list-item>
+
 			<list-item class="item item-a" type="info" if="{{localCategory}}">
 				<text class="item-title" static>本地分类</text>
 				<text class="item-value">{{localCategory}}</text>
 			</list-item>
+
 			<list-item class="item item-a" type="summary" if="{{summary}}" @click="showSummary">
 				<text class="item-title" static>书籍简介</text>
 				<text class="item-value" style="color: rgba(255,255,255,0.8);" static>点击查看 →</text>
@@ -96,15 +105,17 @@ export default {
 		category: '',
 		localCategory: '',
 		syncProgress: '计算中...',
-		bookinfoMarqueeEnabled: true
+		bookinfoMarqueeEnabled: true,
+		heavyTaskStarted: false
 	},
 	protected: {
 		name: ''
 	},
+
 	onInit() {
-		global.runGC();
 		this.loadFileInfo();
 	},
+
 	onShow() {
 		storage.get({
 			key: 'EBOOK_BOOKINFO_MARQUEE_ENABLED',
@@ -116,9 +127,11 @@ export default {
 			}
 		});
 	},
+
 	onDestroy() {
 		global.runGC();
 	},
+
 	showSummary() {
 		router.push({
 			uri: 'pages/textReader',
@@ -128,49 +141,55 @@ export default {
 			}
 		});
 	},
+
 	async loadFileInfo() {
 		const bookDirUri = `internal://files/books/${this.name}/`;
 		const bookContentDirUri = `${bookDirUri}content/`;
 		const bookInfoUri = `${bookDirUri}book_info.json`;
 		const indexesUri = `${bookDirUri}indexes/`;
 		const lindexUri = `${bookDirUri}lindex.txt`;
-		let coverUri = '';
 
-		file.readText({
-			uri: bookInfoUri,
-			success: async (data) => {
-				try {
-					const info = JSON.parse(data.text);
-					this.fileName = info.name || this.name;
-					this.wordCount = info.wordCount ? `${info.wordCount} 字` : '未知';
-					this.hasCover = info.hasCover || false;
-					if (this.hasCover && info.coverFileName) {
-						this.coverPath = bookDirUri + info.coverFileName;
-						coverUri = this.coverPath;
-					}
-					this.author = info.author || '';
-					this.summary = info.summary || '';
-					this.bookStatus = info.bookStatus || '';
-					this.category = info.category || '';
-					this.localCategory = info.localCategory || '';
+		try {
+			const data = await runAsyncFunc(file.readText, { uri: bookInfoUri });
+			const info = JSON.parse(data.text);
 
-					await this.calculateSyncProgress();
-					await this.calculateStorage(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri);
-				} catch (e) {
-					this.fileName = this.name;
-					this.wordCount = '解析失败';
-					this.syncProgress = '未知';
-					this.totalStorage = '计算失败';
-				}
-			},
-			fail: (data, code) => {
-				this.fileName = this.name;
-				this.wordCount = '加载失败';
-				this.syncProgress = '未知';
-				this.totalStorage = '计算失败';
+			this.fileName = info.name || this.name;
+			this.wordCount = info.wordCount ? `${info.wordCount} 字` : '未知';
+			this.hasCover = info.hasCover || false;
+
+			let coverUri = '';
+			if (this.hasCover && info.coverFileName) {
+				this.coverPath = bookDirUri + info.coverFileName;
+				coverUri = this.coverPath;
 			}
-		});
+
+			this.author = info.author || '';
+			this.summary = info.summary || '';
+			this.bookStatus = info.bookStatus || '';
+			this.category = info.category || '';
+			this.localCategory = info.localCategory || '';
+
+			this.deferHeavyTasks(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri);
+		} catch (e) {
+			this.fileName = this.name;
+			this.wordCount = '加载失败';
+			this.syncProgress = '未知';
+			this.resetStorageStatus('计算失败');
+		}
 	},
+
+	deferHeavyTasks(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri) {
+		if (this.heavyTaskStarted) return;
+		this.heavyTaskStarted = true;
+
+		setTimeout(async () => {
+			await Promise.all([
+				this.calculateSyncProgress(),
+				this.calculateStorage(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri)
+			]);
+		}, 0);
+	},
+
 	resetStorageStatus(status) {
 		this.totalStorage = status;
 		this.chapterStorage = status;
@@ -178,6 +197,7 @@ export default {
 		this.indexStorage = status;
 		this.bookmarkIndexStorage = status;
 	},
+
 	async calculateStorage(bookContentDirUri, bookInfoUri, indexesUri, lindexUri, coverUri) {
 		this.resetStorageStatus('计算中...');
 		try {
@@ -197,23 +217,56 @@ export default {
 			this.resetStorageStatus('计算失败');
 		}
 	},
+
 	async getFileSize(uri) {
 		try {
+			if (!uri) return 0;
 			const res = await runAsyncFunc(file.get, { uri });
-			return res ? res.length : 0;
+			return res ? (res.length || 0) : 0;
 		} catch (e) {
 			return 0;
 		}
 	},
+
 	async getDirSize(uri) {
 		try {
-			const res = await runAsyncFunc(file.list, { uri });
-			if (!res || !res.fileList) return 0;
-			return res.fileList.reduce((acc, f) => acc + (f.type === 'file' ? f.length : 0), 0);
+			if (!uri) return 0;
+			const res = await runAsyncFunc(file.get, {
+				uri,
+				recursive: true
+			});
+			return this.calcNodeSize(res);
 		} catch (e) {
 			return 0;
 		}
 	},
+
+	calcNodeSize(node) {
+		if (!node) return 0;
+
+		if (node.type === 'file') {
+			return node.length || 0;
+		}
+
+		if (node.type === 'dir' && Array.isArray(node.subFiles)) {
+			let size = 0;
+			for (const item of node.subFiles) {
+				size += this.calcNodeSize(item);
+			}
+			return size;
+		}
+
+		if (Array.isArray(node.subFiles)) {
+			let size = 0;
+			for (const item of node.subFiles) {
+				size += this.calcNodeSize(item);
+			}
+			return size;
+		}
+
+		return 0;
+	},
+
 	async getIndexTotalSize(bookInfoUri, lindexUri, indexesUri) {
 		try {
 			const [infoSize, lindexSize, indexesDirSize] = await Promise.all([
@@ -226,6 +279,7 @@ export default {
 			return 0;
 		}
 	},
+
 	async getBookmarkSize() {
 		try {
 			const bookshelf = await bookStorage.load();
@@ -239,25 +293,30 @@ export default {
 			return 0;
 		}
 	},
+
 	async calculateSyncProgress() {
-		const version = await chapterManager.checkVersion(this.name);
-		if (version === 'none') {
-			this.syncProgress = '无章节信息';
-			return;
-		}
 		try {
+			const version = await chapterManager.checkVersion(this.name);
+			if (version === 'none') {
+				this.syncProgress = '无章节信息';
+				return;
+			}
+
 			const bookIndex = await chapterManager.loadBookIndex(this.name);
 			const { totalChapters, syncedChapters } = bookIndex;
+
 			if (typeof totalChapters !== 'number' || totalChapters <= 0) {
 				this.syncProgress = '无需同步';
 				return;
 			}
+
 			const progress = Math.floor((syncedChapters / totalChapters) * 100);
 			this.syncProgress = `${progress}% (${syncedChapters}/${totalChapters}章)`;
 		} catch (e) {
 			this.syncProgress = '计算失败';
 		}
 	},
+
 	formatFileSize(bytes) {
 		if (bytes === 0) return '0 Bytes';
 		const k = 1024;
@@ -265,6 +324,7 @@ export default {
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 	},
+
 	back() {
 		router.back();
 	}
@@ -272,7 +332,7 @@ export default {
 </script>
 
 <style>
-  @import '../../common/style.css';
+@import '../../common/style.css';
 .item-title {
 	font-size: 28px;
 	font-weight: bold;
