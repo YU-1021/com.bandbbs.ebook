@@ -58,416 +58,444 @@ import app from '@system.app';
 import { calculateStorageInfo, isStorageLow } from '../../utils/storageUtils.js';
 
 export default {
-	private: {
-		nowTime: "00:00",
-		timer: null,
-		timeFormat: '24h',
-		shelfStyle: 'list',
-		isNavigating: false,
-		allBooks: [],
-		visibleBooks: [],
-		currentPage: 0,
-		totalPages: 1,
-		pageSize: 12,
-		lastReadOnTop: true,
-		shelfMarqueeEnabled: false,
-		displayMode: 'all',
-		categories: [],
-		selectedCategory: null,
-		lastReadBook: null,
-		homeProgressMode: 'book',
-		showStorageWarning: true,
-		isStorageLow: false,
-		categoryPagination: false,
-		currentModeList: [],
-		refreshMode: 'onExit',
-		showSearchBar: true
-	},
-	
-	onInit() {
-		storage.get({
-			key: 'EBOOK_TIME_FORMAT',
-			success: (data) => {
-				if(data) this.timeFormat = data;
-				this.updateTime();
-			},
-			fail: () => {
-				this.updateTime();
-			}
-		});
-		this.timer = setInterval(() => { this.updateTime(); }, 60000);
-		bookStorage.load();
-	},
-	
-	onShow() {
-		this.isNavigating = false;
-		
-		const restoreCategory = globalThis.fromCategoryPage && globalThis.selectedCategory;
-		const restoreHome = globalThis.fromHomePage && typeof globalThis.homePage === 'number';
-		
-		const categoryToRestore = restoreCategory ? globalThis.selectedCategory : null;
-		const categoryPageToRestore = restoreCategory && typeof globalThis.categoryPage === 'number' ? globalThis.categoryPage : null;
-		const homePageToRestore = restoreHome ? globalThis.homePage : null;
+  private: {
+    nowTime: "00:00",
+    timer: null,
+    timeFormat: '24h',
+    shelfStyle: 'list',
+    isNavigating: false,
+    allBooks: [],
+    visibleBooks: [],
+    currentPage: 0,
+    totalPages: 1,
+    pageSize: 6,
+    lastReadOnTop: true,
+    shelfMarqueeEnabled: false,
+    displayMode: 'all',
+    categories: [],
+    selectedCategory: null,
+    lastReadBook: null,
+    homeProgressMode: 'book',
+    showStorageWarning: true,
+    isStorageLow: false,
+    categoryPagination: false,
+    currentModeList: [],
+    refreshMode: 'onExit',
+    showSearchBar: true,
+    progressSubtitleCache: {},
+    lastDeviceInfoTs: 0,
+    storageInfoLoaded: false,
+    categoryCountCache: null
+  },
+  exit() {
+    app.terminate();
+  },
+  updateTime() {
+    const date = new Date();
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    if (this.timeFormat === '12h') {
+      let ampm = hours >= 12 ? '下午' : '上午';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      this.nowTime = `${ampm} ${hours}:${minutes}`;
+    } else {
+      hours = hours < 10 ? '0' + hours : hours;
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      this.nowTime = `${hours}:${minutes}`;
+    }
+  },
+  onInit() {
+    storage.get({
+      key: 'EBOOK_TIME_FORMAT',
+      success: (data) => {
+        if(data) this.timeFormat = data;
+        this.updateTime();
+      },
+      fail: () => {
+        this.updateTime();
+      }
+    });
+    this.timer = setInterval(() => { this.updateTime(); }, 1000);
+    bookStorage.load();
+  },
+  onDestroy() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    this.progressSubtitleCache = null;
+    this.categoryCountCache = null;
+    this.allBooks = null;
+    this.visibleBooks = null;
+    this.currentModeList = null;
+    this.categories = null;
+    global.runGC();
+  },
+  onShow() {
+    this.isNavigating = false;
 
-		if (restoreCategory) {
-			globalThis.fromCategoryPage = false;
-			globalThis.selectedCategory = null;
-			globalThis.categoryPage = null;
-		}
-		if (restoreHome) {
-			globalThis.fromHomePage = false;
-			globalThis.homePage = null;
-		}
+    const restoreCategory = globalThis.fromCategoryPage && globalThis.selectedCategory;
+    const catToRestore = restoreCategory ? globalThis.selectedCategory : null;
+    const catPageToRestore = restoreCategory ? globalThis.categoryPage : null;
+    
+    const restoreHome = globalThis.fromHomePage && typeof globalThis.homePage === 'number';
+    const homePageToRestore = restoreHome ? globalThis.homePage : null;
 
-		if (!restoreHome && !restoreCategory) {
-			this.currentPage = 0;
-		}
+    if (restoreCategory) {
+      globalThis.fromCategoryPage = false;
+      globalThis.selectedCategory = null;
+      globalThis.categoryPage = null;
+    }
+    if (restoreHome) {
+      globalThis.fromHomePage = false;
+      globalThis.homePage = null;
+    }
 
-		this.loadSettingsAndFiles().then(() => {
-			const shouldRefresh = this.shouldRefreshShelf();
-			const proceed = () => {
-				if (restoreCategory && categoryToRestore) {
-					this.displayMode = 'category';
-					this.selectedCategory = categoryToRestore;
-					if (categoryPageToRestore !== null) this.currentPage = categoryPageToRestore;
-					this.updateCategoryView();
-				} else if (restoreHome && homePageToRestore !== null && this.displayMode === 'all') {
-					this.loadPage(homePageToRestore);
-				} else {
-                    if(this.displayMode === 'category') {
-                        this.updateCategoryView();
-                    } else {
-                        this.loadPage(this.currentPage);
-                    }
-                }
-				this.loadDeviceInfo();
-			};
+    if (!restoreHome && !restoreCategory) {
+      this.currentPage = 0;
+    }
 
-			if (shouldRefresh || this.allBooks.length === 0) {
-				this.loadFileList().then(proceed);
-			} else {
-				proceed();
-			}
-		});
-	},
-	
-	onDestroy() {
-		if (this.timer) {
-			clearInterval(this.timer);
-			this.timer = null;
-		}
-		this.allBooks = null;
-		this.visibleBooks = null;
-		global.runGC();
-	},
-	
-	exit() {
-		app.terminate();
-	},
-	
-	updateTime() {
-		const date = new Date();
-		let hours = date.getHours();
-		let minutes = date.getMinutes();
-		if (this.timeFormat === '12h') {
-			let ampm = hours >= 12 ? '下午' : '上午';
-			hours = hours % 12;
-			hours = hours ? hours : 12;
-			minutes = minutes < 10 ? '0' + minutes : minutes;
-			this.nowTime = `${ampm} ${hours}:${minutes}`;
-		} else {
-			hours = hours < 10 ? '0' + hours : hours;
-			minutes = minutes < 10 ? '0' + minutes : minutes;
-			this.nowTime = `${hours}:${minutes}`;
-		}
-	},
-	
-	getStorage(key, defaultValue) {
-		return new Promise((resolve) => {
-			storage.get({
-				key: key,
-				success: (data) => resolve(data || defaultValue),
-				fail: () => resolve(defaultValue)
-			});
-		});
-	},
-	
-	async loadSettingsAndFiles() {
-		const keys = [
-			'EBOOK_SHELF_PAGE_SIZE', 'EBOOK_SHELF_STYLE', 'EBOOK_TOP_LAST_READ',
-			'EBOOK_SHELF_MARQUEE_ENABLED', 'EBOOK_HOME_DISPLAY_MODE', 'EBOOK_HOME_PROGRESS_MODE',
-			'EBOOK_SHOW_STORAGE_WARNING', 'EBOOK_CATEGORY_PAGINATION', 'EBOOK_SHELF_REFRESH_MODE',
-			'EBOOK_HOME_SEARCH_ENABLED'
-		];
-		const defaults = ['12', 'list', 'true', 'false', 'all', 'book', 'true', 'false', 'onExit', 'true'];
-		
-		const results = await Promise.all(keys.map((k, i) => this.getStorage(k, defaults[i])));
-		
-		this.pageSize = parseInt(results[0]);
-		this.shelfStyle = results[1];
-		this.lastReadOnTop = results[2] === 'true';
-		this.shelfMarqueeEnabled = results[3] === 'true';
-		this.displayMode = results[4] || 'all';
-		this.homeProgressMode = results[5] || 'book';
-		this.showStorageWarning = results[6] === 'true';
-		this.categoryPagination = results[7] === 'true';
-		this.refreshMode = results[8] || 'onExit';
-		this.showSearchBar = results[9] === 'true';
-	},
-	
-	shouldRefreshShelf() {
-		if (this.refreshMode === 'onEnter') return true;
-		if (this.refreshMode === 'onExit' && globalThis.shouldRefreshShelf) {
-			globalThis.shouldRefreshShelf = false;
-			return true;
-		}
-		return false;
-	},
-	
-	async loadFileList() {
-		this.allBooks = await bookStorage.getBooks();
-		await this.syncChapterCounts();
-		this.processBooks();
+    this.loadSettingsAndFiles().then(() => {
+      const shouldRefresh = this.shouldRefreshShelf();
+      
+      const postLoad = () => {
+        if (restoreCategory && catToRestore) {
+          this.displayMode = 'category';
+          this.selectedCategory = catToRestore;
+          if (catPageToRestore !== null) this.currentPage = catPageToRestore;
+          this.updateCategoryView();
+        } else if (restoreHome && homePageToRestore !== null && this.displayMode === 'all') {
+          this.loadPage(homePageToRestore);
+        } else {
+          if (this.displayMode === 'category') {
+            this.updateCategoryView();
+          } else {
+            this.loadPage(this.currentPage);
+          }
+        }
+        this.loadDeviceInfo();
+      };
 
-		if (this.displayMode === 'category') {
-			this.updateCategories();
-			this.updateCategoryView();
-		} else {
-			this.currentModeList = this.allBooks;
-			this.loadPage(this.currentPage);
-		}
-		global.runGC();
-	},
-	
-	async syncChapterCounts() {
-		if (!Array.isArray(this.allBooks) || this.allBooks.length === 0) return;
+      if (shouldRefresh || this.allBooks.length === 0) {
+        this.loadFileList().then(postLoad);
+      } else {
+        postLoad();
+      }
+    });
+  },
+  getStorage(key, defaultValue) {
+    return new Promise((resolve) => {
+      storage.get({
+        key: key,
+        success: (data) => resolve(data || defaultValue),
+        fail: () => resolve(defaultValue)
+      });
+    });
+  },
+  async loadSettingsAndFiles() {
+    const keys = [
+      'EBOOK_SHELF_PAGE_SIZE', 'EBOOK_SHELF_STYLE', 'EBOOK_TOP_LAST_READ',
+      'EBOOK_SHELF_MARQUEE_ENABLED', 'EBOOK_HOME_DISPLAY_MODE', 'EBOOK_HOME_PROGRESS_MODE',
+      'EBOOK_SHOW_STORAGE_WARNING', 'EBOOK_CATEGORY_PAGINATION', 'EBOOK_SHELF_REFRESH_MODE',
+      'EBOOK_HOME_SEARCH_ENABLED'
+    ];
+    const defaults = ['6', 'list', 'true', 'false', 'all', 'book', 'true', 'false', 'onExit', 'true'];
+    
+    const results = await Promise.all(keys.map((k, i) => this.getStorage(k, defaults[i])));
+    
+    this.pageSize = parseInt(results[0]);
+    this.shelfStyle = results[1];
+    this.lastReadOnTop = results[2] === 'true';
+    this.shelfMarqueeEnabled = results[3] === 'true';
+    this.displayMode = results[4] || 'all';
+    this.homeProgressMode = results[5] || 'book';
+    this.showStorageWarning = results[6] === 'true';
+    this.categoryPagination = results[7] === 'true';
+    this.refreshMode = results[8] || 'onExit';
+    this.showSearchBar = results[9] === 'true';
+  },
+  shouldRefreshShelf() {
+    if (this.refreshMode === 'onEnter') return true;
+    if (this.refreshMode === 'onExit' && globalThis.shouldRefreshShelf) {
+      globalThis.shouldRefreshShelf = false;
+      return true;
+    }
+    return false;
+  },
+  async loadFileList() {
+    this.allBooks = await bookStorage.getBooks();
+    this.progressSubtitleCache = {};
+    this.categoryCountCache = null;
+    await this.syncChapterCounts();
+    this.processBooks();
 
-		let hasUpdates = false;
-		await Promise.all(this.allBooks.map(async (book) => {
-			if (!book || !book.dirName) return;
-			const storedCount = parseInt(book.chapterCount, 10) || 0;
-			if (storedCount <= 0) {
-				try {
-					const actualCount = await chapterManager.getTotalChapters(book.dirName);
-					if (actualCount > 0 && actualCount !== storedCount) {
-						book.chapterCount = actualCount;
-						hasUpdates = true;
-					}
-				} catch (e) { }
-			}
-		}));
+    if (this.displayMode === 'category') {
+      this.updateCategories();
+      this.updateCategoryView();
+    } else {
+      this.currentModeList = this.allBooks;
+      this.loadPage(this.currentPage);
+    }
+    global.runGC();
+  },
+  async syncChapterCounts() {
+    if (!Array.isArray(this.allBooks) || this.allBooks.length === 0) return;
 
-		if (hasUpdates) await bookStorage.updateBooks(this.allBooks);
-	},
-	
-	processBooks() {
-		this.lastReadBook = null;
-		if (this.lastReadOnTop && this.allBooks.length > 0) {
-			let lastReadIndex = -1;
-			let latestTimestamp = 0;
+    const needCheckBooks = [];
+    for (let i = 0; i < this.allBooks.length; i++) {
+      const book = this.allBooks[i];
+      if (!book || !book.dirName) continue;
+      const storedCount = parseInt(book.chapterCount, 10) || 0;
+      if (storedCount <= 0) needCheckBooks.push(book);
+    }
 
-			this.allBooks.forEach((book, index) => {
-				book.isLastRead = false;
-				book.hasRealCover = !!(book.hasCover && book.coverFileName);
-				if (book.progress && book.progress.lastReadTimestamp > latestTimestamp) {
-					latestTimestamp = book.progress.lastReadTimestamp;
-					lastReadIndex = index;
-				}
-			});
+    if (needCheckBooks.length === 0) return;
 
-			if (lastReadIndex > -1) {
-				const lastReadBook = this.allBooks.splice(lastReadIndex, 1)[0];
-				lastReadBook.isLastRead = true;
-				this.allBooks.unshift(lastReadBook);
-				this.lastReadBook = lastReadBook;
-			}
-		} else {
-			this.allBooks.forEach(book => {
-				book.hasRealCover = !!(book.hasCover && book.coverFileName);
-			});
-		}
-	},
-	
-	updateCategories() {
-		const categorySet = new Set();
-		let hasUncategorized = false;
-		this.allBooks.forEach(book => {
-			if (book.localCategory) categorySet.add(book.localCategory);
-			else hasUncategorized = true;
-		});
-		this.categories = Array.from(categorySet).sort();
-		if (hasUncategorized) this.categories.push('未分类');
-	},
-	
-	updateCategoryView() {
-		if (this.selectedCategory) {
-			this.currentModeList = this.selectedCategory === '未分类'
-				? this.allBooks.filter(book => !book.localCategory)
-				: this.allBooks.filter(book => book.localCategory === this.selectedCategory);
-		} else {
-			const categoryItems = this.categories.map(cat => ({
-				isCategory: true,
-				categoryName: cat,
-				name: cat,
-				bookCount: cat === '未分类'
-					? this.allBooks.filter(b => !b.localCategory).length
-					: this.allBooks.filter(b => b.localCategory === cat).length
-			}));
-			this.currentModeList = this.lastReadBook ? [this.lastReadBook, ...categoryItems] : categoryItems;
-		}
+    const maxCheckCount = Math.min(3, needCheckBooks.length);
+    let hasUpdates = false;
 
-		if (this.categoryPagination) {
-			this.loadPage(this.currentPage);
-		} else {
-			this.visibleBooks = this.currentModeList;
-			this.totalPages = 1;
-			this.currentPage = 0;
-		}
-	},
-	
-	handleItemClick(item) {
-		if (item.isCategory) {
-			this.selectedCategory = item.categoryName;
-			this.currentPage = 0;
-			this.updateCategoryView();
-		} else {
-			this.selectFile(item);
-		}
-	},
-	
-	backToCategoryList() {
-		this.selectedCategory = null;
-		this.currentPage = 0;
-		this.updateCategoryView();
-	},
-	
-	roundToDecimal(num, decimalPlaces) {
-		const parsed = parseFloat(num);
-		return isNaN(parsed) ? (0).toFixed(decimalPlaces) : parsed.toFixed(decimalPlaces);
-	},
-	
-	getChapterProgressPercent(book) {
-		if (!book?.progress) return 0;
-		const percent = parseFloat(book.progress.chapterProgressPercent);
-		return isNaN(percent) ? 0 : Math.min(100, Math.max(0, percent));
-	},
-	
-	getBookProgressPercent(book) {
-		if (!book?.progress) return 0;
-		const totalChapters = parseInt(book.chapterCount, 10) || 0;
-		if (totalChapters <= 0) return 0;
-		
-		const chapterIndex = Math.max(0, book.progress.chapterIndex || 0);
-		const chapterFraction = this.getChapterProgressPercent(book) / 100;
-		return Math.min(100, Math.max(0, ((chapterIndex + chapterFraction) / totalChapters) * 100));
-	},
-	
-	getProgressSubtitle(book) {
-		if (!book) return '暂无进度';
-		if (book.isCategory) return `共 ${book.bookCount || 0} 本`;
+    for (let i = 0; i < maxCheckCount; i++) {
+      const book = needCheckBooks[i];
+      try {
+        const actualCount = await chapterManager.getTotalChapters(book.dirName);
+        if (actualCount > 0 && actualCount !== (parseInt(book.chapterCount, 10) || 0)) {
+          book.chapterCount = actualCount;
+          hasUpdates = true;
+        }
+      } catch (e) { }
+    }
 
-		const prefix = book.isLastRead ? '上次阅读 · ' : '';
-		const progress = book.progress || {};
-		if (progress.chapterIndex == null || progress.chapterIndex < 0) return `${prefix}尚未开始`;
+    if (hasUpdates) await bookStorage.updateBooks(this.allBooks);
+  },
+  processBooks() {
+    this.lastReadBook = null;
+    if (this.lastReadOnTop && this.allBooks.length > 0) {
+      let lastReadIndex = -1;
+      let latestTimestamp = 0;
+      this.allBooks.forEach((book, index) => {
+        book.isLastRead = false;
+        if (book.progress && book.progress.lastReadTimestamp > latestTimestamp) {
+          latestTimestamp = book.progress.lastReadTimestamp;
+          lastReadIndex = index;
+        }
+      });
+      if (lastReadIndex > -1) {
+        const lastReadBook = this.allBooks.splice(lastReadIndex, 1)[0];
+        lastReadBook.isLastRead = true;
+        this.allBooks.unshift(lastReadBook);
+        this.lastReadBook = lastReadBook;
+      }
+    }
+    this.allBooks.forEach(book => {
+      book.hasRealCover = !!(book.hasCover && book.coverFileName);
+    });
+  },
+  updateCategories() {
+    const categorySet = new Set();
+    let hasUncategorized = false;
+    this.allBooks.forEach(book => {
+      if (book.localCategory) categorySet.add(book.localCategory);
+      else hasUncategorized = true;
+    });
+    this.categories = Array.from(categorySet).sort();
+    if (hasUncategorized) this.categories.push('未分类');
+    this.categoryCountCache = null;
+  },
+  updateCategoryView() {
+    if (this.selectedCategory) {
+      const categoryBooks = this.selectedCategory === '未分类'
+        ? this.allBooks.filter(book => !book.localCategory)
+        : this.allBooks.filter(book => book.localCategory === this.selectedCategory);
+      this.currentModeList = categoryBooks;
+    } else {
+      if (!this.categoryCountCache) {
+        const countMap = {};
+        let uncategorizedCount = 0;
+        for (let i = 0; i < this.allBooks.length; i++) {
+          const book = this.allBooks[i];
+          if (book.localCategory) {
+            countMap[book.localCategory] = (countMap[book.localCategory] || 0) + 1;
+          } else {
+            uncategorizedCount++;
+          }
+        }
+        this.categoryCountCache = {
+          countMap,
+          uncategorizedCount
+        };
+      }
 
-		if (this.homeProgressMode === 'chapter') {
-			return `${prefix}${this.roundToDecimal(this.getChapterProgressPercent(book), 2)}% · 本章进度`;
-		}
+      const categoryItems = this.categories.map(cat => ({
+        isCategory: true,
+        categoryName: cat,
+        name: cat,
+        bookCount: cat === '未分类'
+          ? this.categoryCountCache.uncategorizedCount
+          : (this.categoryCountCache.countMap[cat] || 0)
+      }));
+      this.currentModeList = this.lastReadBook ? [this.lastReadBook, ...categoryItems] : categoryItems;
+    }
 
-		const totalChapters = parseInt(book.chapterCount, 10) || 0;
-		const bookPercent = this.roundToDecimal(this.getBookProgressPercent(book), 2);
-		
-		if (totalChapters <= 0) return `${prefix}${bookPercent}% · 章节信息缺失`;
-		
-		const currentChapter = Math.min(totalChapters, (progress.chapterIndex || 0) + 1);
-		return `${prefix}${bookPercent}% · 看到 ${currentChapter} / ${totalChapters} 章`;
-	},
-	
-	loadPage(page) {
-		const list = this.currentModeList || this.allBooks;
-		this.totalPages = Math.ceil(list.length / this.pageSize) || 1;
-		const safePage = Math.max(0, Math.min(page, this.totalPages - 1));
+    if (this.categoryPagination) {
+      this.loadPage(this.currentPage);
+    } else {
+      this.visibleBooks = this.currentModeList;
+      this.totalPages = 1;
+      this.currentPage = 0;
+    }
+  },
+  handleItemClick(item) {
+    if (item.isCategory) {
+      this.selectedCategory = item.categoryName;
+      this.currentPage = 0;
+      this.updateCategoryView();
+    } else {
+      this.selectFile(item);
+    }
+  },
+  backToCategoryList() {
+    this.selectedCategory = null;
+    this.currentPage = 0;
+    this.updateCategoryView();
+  },
+  roundToDecimal(num, decimalPlaces) {
+    const parsed = parseFloat(num);
+    return isNaN(parsed) ? (0).toFixed(decimalPlaces) : parsed.toFixed(decimalPlaces);
+  },
+  getChapterProgressPercent(book) {
+    if (!book || !book.progress) return 0;
+    const percent = parseFloat(book.progress.chapterProgressPercent);
+    return isNaN(percent) ? 0 : Math.min(100, Math.max(0, percent));
+  },
+  getBookProgressPercent(book) {
+    if (!book || !book.progress) return 0;
+    const totalChapters = parseInt(book.chapterCount, 10) || 0;
+    if (totalChapters <= 0) return 0;
+    
+    const chapterIndex = Math.max(0, book.progress.chapterIndex || 0);
+    const chapterFraction = this.getChapterProgressPercent(book) / 100;
+    return Math.min(100, Math.max(0, ((chapterIndex + chapterFraction) / totalChapters) * 100));
+  },
+  getProgressSubtitle(book) {
+    if (!book) return '暂无进度';
+    if (book.isCategory) return `共 ${book.bookCount || 0} 本`;
 
-		if (this.totalPages > 0) {
-			const start = safePage * this.pageSize;
-			this.visibleBooks = list.slice(start, start + this.pageSize);
-			this.currentPage = safePage;
-		} else {
-			this.visibleBooks = [];
-			this.currentPage = 0;
-		}
-	},
-	
-	prevPage() {
-		if (this.currentPage > 0) this.loadPage(this.currentPage - 1);
-	},
-	
-	nextPage() {
-		if (this.currentPage < this.totalPages - 1) this.loadPage(this.currentPage + 1);
-	},
-	
-	selectFile(item) {
-		if (this.isNavigating || item.isCategory) return;
-		this.isNavigating = true;
-		globalThis.enteringDetailView = true;
+    const cacheKey = `${book.dirName || ''}|${book.isLastRead ? 1 : 0}|${this.homeProgressMode}|${book.chapterCount || 0}|${book.progress && book.progress.chapterIndex != null ? book.progress.chapterIndex : -1}|${book.progress && book.progress.chapterProgressPercent != null ? book.progress.chapterProgressPercent : ''}`;
+    if (this.progressSubtitleCache && this.progressSubtitleCache[cacheKey]) {
+      return this.progressSubtitleCache[cacheKey];
+    }
 
-		if (this.displayMode === 'category' && this.selectedCategory) {
-			globalThis.fromCategoryPage = true;
-			globalThis.selectedCategory = this.selectedCategory;
-			globalThis.categoryPage = this.currentPage;
-			globalThis.fromHomePage = false;
-			globalThis.homePage = null;
-		} else if (this.displayMode === 'all') {
-			globalThis.fromCategoryPage = false;
-			globalThis.selectedCategory = null;
-			globalThis.fromHomePage = true;
-			globalThis.homePage = this.currentPage;
-		} else {
-			globalThis.fromCategoryPage = false;
-			globalThis.selectedCategory = null;
-			globalThis.fromHomePage = false;
-			globalThis.homePage = null;
-		}
+    const prefix = book.isLastRead ? '上次阅读 · ' : '';
+    const progress = book.progress || {};
+    let result = '';
 
-		router.push({
-			uri: '/pages/detail',
-			params: { name: item.dirName }
-		});
-	},
-	
-	openSearch() {
-		router.push({ uri: '/pages/search' });
-	},
-	
-	routerTo(page) {
-		router.push({ uri: `/pages/${page}` });
-	},
-	
-	loadDeviceInfo() {
-		if (!this.showStorageWarning) {
-			this.isStorageLow = false;
-			return;
-		}
-		device.getInfo({
-			success: (ret) => {
-				device.getTotalStorage({
-					success: (data) => {
-						device.getAvailableStorage({
-							success: (availData) => {
-								const info = calculateStorageInfo(data.totalStorage || 0, availData.availableStorage || 0, ret.product);
-								this.isStorageLow = isStorageLow(info.actualAvailable);
-							}
-						});
-					}
-				});
-			}
-		});
-	}
+    if (progress.chapterIndex == null || progress.chapterIndex < 0) {
+      result = `${prefix}尚未开始`;
+    } else if (this.homeProgressMode === 'chapter') {
+      result = `${prefix}${this.roundToDecimal(this.getChapterProgressPercent(book), 2)}% · 本章进度`;
+    } else {
+      const totalChapters = parseInt(book.chapterCount, 10) || 0;
+      const bookPercent = this.roundToDecimal(this.getBookProgressPercent(book), 2);
+      
+      if (totalChapters <= 0) {
+        result = `${prefix}${bookPercent}% · 章节信息缺失`;
+      } else {
+        const currentChapter = Math.min(totalChapters, (progress.chapterIndex || 0) + 1);
+        result = `${prefix}${bookPercent}% · 看到 ${currentChapter} / ${totalChapters} 章`;
+      }
+    }
+
+    if (this.progressSubtitleCache) this.progressSubtitleCache[cacheKey] = result;
+    return result;
+  },
+  loadPage(page) {
+    const list = this.currentModeList || this.allBooks;
+    this.totalPages = Math.ceil(list.length / this.pageSize) || 1;
+    const safePage = Math.max(0, Math.min(page, this.totalPages - 1));
+
+    if (this.totalPages > 0) {
+      const start = safePage * this.pageSize;
+      this.visibleBooks = list.slice(start, start + this.pageSize);
+      this.currentPage = safePage;
+    } else {
+      this.visibleBooks = [];
+      this.currentPage = 0;
+    }
+  },
+  prevPage() {
+    if (this.currentPage > 0) this.loadPage(this.currentPage - 1);
+  },
+  nextPage() {
+    if (this.currentPage < this.totalPages - 1) this.loadPage(this.currentPage + 1);
+  },
+  selectFile(item) {
+    if (this.isNavigating || item.isCategory) return;
+    this.isNavigating = true;
+    globalThis.enteringDetailView = true;
+
+    if (this.displayMode === 'category' && this.selectedCategory) {
+      globalThis.fromCategoryPage = true;
+      globalThis.selectedCategory = this.selectedCategory;
+      globalThis.categoryPage = this.currentPage;
+      globalThis.fromHomePage = false;
+      globalThis.homePage = null;
+    } else if (this.displayMode === 'all') {
+      globalThis.fromCategoryPage = false;
+      globalThis.selectedCategory = null;
+      globalThis.fromHomePage = true;
+      globalThis.homePage = this.currentPage;
+    } else {
+      globalThis.fromCategoryPage = false;
+      globalThis.selectedCategory = null;
+      globalThis.fromHomePage = false;
+      globalThis.homePage = null;
+    }
+
+    router.push({
+      uri: '/pages/detail',
+      params: { name: item.dirName }
+    });
+  },
+  openSearch() {
+    router.push({ uri: '/pages/search' });
+  },
+  routerTo(page) {
+    router.push({ uri: `/pages/${page}` });
+  },
+  loadDeviceInfo() {
+    if (!this.showStorageWarning) {
+      this.isStorageLow = false;
+      return;
+    }
+
+    const now = Date.now();
+    if (this.storageInfoLoaded && now - this.lastDeviceInfoTs < 30000) {
+      return;
+    }
+    this.lastDeviceInfoTs = now;
+    this.storageInfoLoaded = true;
+
+    device.getInfo({
+      success: (ret) => {
+        device.getTotalStorage({
+          success: (data) => {
+            device.getAvailableStorage({
+              success: (availData) => {
+                const info = calculateStorageInfo(data.totalStorage || 0, availData.availableStorage || 0, ret.product);
+                this.isStorageLow = isStorageLow(info.actualAvailable);
+              }
+            });
+          }
+        });
+      }
+    });
+  }
 };
 </script>
 
 <style>
-/* 样式部分保持不变 */
 .page {
 	width: 432px;
 	height: 514px;
