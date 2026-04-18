@@ -83,7 +83,11 @@ export default {
     categoryPagination: false,
     currentModeList: [],
     refreshMode: 'onExit',
-    showSearchBar: true
+    showSearchBar: true,
+    progressSubtitleCache: {},
+    lastDeviceInfoTs: 0,
+    storageInfoLoaded: false,
+    categoryCountCache: null
   },
   
   async onInit() {
@@ -91,9 +95,13 @@ export default {
   },
   
   onDestroy() {
+    this.progressSubtitleCache = null;
+    this.categoryCountCache = null;
     this.allBooks = null;
     this.visibleBooks = null;
     this.currentModeList = null;
+    this.categoryBooks = null;
+    this.categories = null;
     global.runGC();
   },
   
@@ -132,6 +140,12 @@ export default {
           this.updateCategoryView();
         } else if (restoreHome && homePageToRestore !== null && this.displayMode === 'all') {
           this.loadPage(homePageToRestore);
+        } else {
+          if (this.displayMode === 'category') {
+            this.updateCategoryView();
+          } else {
+            this.loadPage(this.currentPage);
+          }
         }
         this.loadDeviceInfo();
       };
@@ -196,6 +210,8 @@ export default {
   
   async loadFileList() {
     this.allBooks = await bookStorage.getBooks();
+    this.progressSubtitleCache = {};
+    this.categoryCountCache = null;
     await this.syncChapterCounts();
     this.processBooks();
 
@@ -210,22 +226,32 @@ export default {
   },
   
   async syncChapterCounts() {
-    if (!this.allBooks || this.allBooks.length === 0) return;
-    let hasUpdates = false;
-    const tasks = this.allBooks.map(async (book) => {
-      if (!book || !book.dirName) return;
+    if (!Array.isArray(this.allBooks) || this.allBooks.length === 0) return;
+
+    const needCheckBooks = [];
+    for (let i = 0; i < this.allBooks.length; i++) {
+      const book = this.allBooks[i];
+      if (!book || !book.dirName) continue;
       const storedCount = parseInt(book.chapterCount, 10) || 0;
-      if (storedCount <= 0) {
-        try {
-          const actualCount = await chapterManager.getTotalChapters(book.dirName);
-          if (actualCount > 0 && actualCount !== storedCount) {
-            book.chapterCount = actualCount;
-            hasUpdates = true;
-          }
-        } catch (e) { }
-      }
-    });
-    await Promise.all(tasks);
+      if (storedCount <= 0) needCheckBooks.push(book);
+    }
+
+    if (needCheckBooks.length === 0) return;
+
+    const maxCheckCount = Math.min(3, needCheckBooks.length);
+    let hasUpdates = false;
+
+    for (let i = 0; i < maxCheckCount; i++) {
+      const book = needCheckBooks[i];
+      try {
+        const actualCount = await chapterManager.getTotalChapters(book.dirName);
+        if (actualCount > 0 && actualCount !== (parseInt(book.chapterCount, 10) || 0)) {
+          book.chapterCount = actualCount;
+          hasUpdates = true;
+        }
+      } catch (e) { }
+    }
+
     if (hasUpdates) await bookStorage.updateBooks(this.allBooks);
   },
   
@@ -262,6 +288,7 @@ export default {
     });
     this.categories = Array.from(categorySet).sort();
     if (hasUncategorized) this.categories.push('未分类');
+    this.categoryCountCache = null;
   },
   
   updateCategoryView() {
@@ -271,11 +298,28 @@ export default {
         : this.allBooks.filter(book => book.localCategory === this.selectedCategory);
       this.currentModeList = this.categoryBooks;
     } else {
+      if (!this.categoryCountCache) {
+        const countMap = {};
+        let uncategorizedCount = 0;
+        for (let i = 0; i < this.allBooks.length; i++) {
+          const book = this.allBooks[i];
+          if (book.localCategory) {
+            countMap[book.localCategory] = (countMap[book.localCategory] || 0) + 1;
+          } else {
+            uncategorizedCount++;
+          }
+        }
+        this.categoryCountCache = {
+          countMap,
+          uncategorizedCount
+        };
+      }
+
       const categoryItems = this.categories.map(cat => ({
         isCategory: true,
         categoryName: cat,
         name: cat,
-        bookCount: cat === '未分类' ? this.allBooks.filter(b => !b.localCategory).length : this.allBooks.filter(b => b.localCategory === cat).length
+        bookCount: cat === '未分类' ? this.categoryCountCache.uncategorizedCount : (this.categoryCountCache.countMap[cat] || 0)
       }));
       this.currentModeList = this.lastReadBook ? [this.lastReadBook, ...categoryItems] : categoryItems;
     }
@@ -309,34 +353,47 @@ export default {
     if (!book) return '暂无进度';
     if (book.isCategory) return `共 ${book.bookCount || 0} 本`;
 
-    const prefix = book.isLastRead ? '上次阅读 · ' : '';
-    const progress = book.progress || {};
-    if (progress.chapterIndex == null || progress.chapterIndex < 0) return `${prefix}尚未开始`;
-
-    const getPercent = (val) => {
-      const p = parseFloat(val);
-      return isNaN(p) ? 0 : Math.min(100, Math.max(0, p)).toFixed(2);
-    };
-
-    if (this.homeProgressMode === 'chapter') {
-      return `${prefix}${getPercent(progress.chapterProgressPercent)}% · 本章进度`;
+    const cacheKey = `${book.dirName || ''}|${book.isLastRead ? 1 : 0}|${this.homeProgressMode}|${book.chapterCount || 0}|${book.progress && book.progress.chapterIndex != null ? book.progress.chapterIndex : -1}|${book.progress && book.progress.chapterProgressPercent != null ? book.progress.chapterProgressPercent : ''}`;
+    if (this.progressSubtitleCache && this.progressSubtitleCache[cacheKey]) {
+      return this.progressSubtitleCache[cacheKey];
     }
 
-    const totalChapters = parseInt(book.chapterCount, 10) || 0;
-    if (totalChapters <= 0) return `${prefix}0.00% · 章节信息缺失`;
+    const prefix = book.isLastRead ? '上次阅读 · ' : '';
+    const progress = book.progress || {};
+    let result = '';
 
-    const chIdx = (typeof progress.chapterIndex === 'number' && progress.chapterIndex >= 0) ? progress.chapterIndex : 0;
-    const chFrac = getPercent(progress.chapterProgressPercent) / 100;
-    const totalPercent = Math.min(100, Math.max(0, ((chIdx + chFrac) / totalChapters) * 100)).toFixed(2);
-    const currentChapter = Math.min(totalChapters, chIdx + 1);
+    if (progress.chapterIndex == null || progress.chapterIndex < 0) {
+      result = `${prefix}尚未开始`;
+    } else {
+      const getPercent = (val) => {
+        const p = parseFloat(val);
+        return isNaN(p) ? 0 : Math.min(100, Math.max(0, p)).toFixed(2);
+      };
 
-    return `${prefix}${totalPercent}% · 看到 ${currentChapter} / ${totalChapters} 章`;
+      if (this.homeProgressMode === 'chapter') {
+        result = `${prefix}${getPercent(progress.chapterProgressPercent)}% · 本章进度`;
+      } else {
+        const totalChapters = parseInt(book.chapterCount, 10) || 0;
+        if (totalChapters <= 0) {
+          result = `${prefix}0.00% · 章节信息缺失`;
+        } else {
+          const chIdx = (typeof progress.chapterIndex === 'number' && progress.chapterIndex >= 0) ? progress.chapterIndex : 0;
+          const chFrac = getPercent(progress.chapterProgressPercent) / 100;
+          const totalPercent = Math.min(100, Math.max(0, ((chIdx + chFrac) / totalChapters) * 100)).toFixed(2);
+          const currentChapter = Math.min(totalChapters, chIdx + 1);
+          result = `${prefix}${totalPercent}% · 看到 ${currentChapter} / ${totalChapters} 章`;
+        }
+      }
+    }
+
+    if (this.progressSubtitleCache) this.progressSubtitleCache[cacheKey] = result;
+    return result;
   },
   
   loadPage(page) {
     const list = this.currentModeList || this.allBooks;
     this.totalPages = Math.ceil(list.length / this.pageSize) || 1;
-    let safePage = Math.max(0, Math.min(page, this.totalPages - 1));
+    const safePage = Math.max(0, Math.min(page, this.totalPages - 1));
     const start = safePage * this.pageSize;
     this.visibleBooks = list.slice(start, start + this.pageSize);
     this.currentPage = safePage;
@@ -345,8 +402,8 @@ export default {
   prevPage() { if (this.currentPage > 0) this.loadPage(this.currentPage - 1); },
   nextPage() { if (this.currentPage < this.totalPages - 1) this.loadPage(this.currentPage + 1); },
   
-  async selectFile(item) {
-    if (this.isNavigating) return;
+  selectFile(item) {
+    if (this.isNavigating || item.isCategory) return;
     this.isNavigating = true;
     globalThis.enteringDetailView = true;
 
@@ -368,7 +425,10 @@ export default {
       globalThis.homePage = null;
     }
 
-    router.push({ uri: '/pages/detail', params: { name: item.dirName } });
+    router.push({
+      uri: '/pages/detail',
+      params: { name: item.dirName }
+    });
   },
   
   openSearch() {
@@ -384,6 +444,14 @@ export default {
       this.isStorageLow = false;
       return;
     }
+
+    const now = Date.now();
+    if (this.storageInfoLoaded && now - this.lastDeviceInfoTs < 30000) {
+      return;
+    }
+    this.lastDeviceInfoTs = now;
+    this.storageInfoLoaded = true;
+
     device.getInfo({
       success: (ret) => {
         device.getTotalStorage({
