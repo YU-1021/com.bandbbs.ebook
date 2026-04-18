@@ -273,7 +273,8 @@ export default {
 	},
 	
 	updateChart(weekData) {
-		const maxValue = Math.max(...weekData);
+		const safeWeekData = Array.isArray(weekData) ? weekData.map(value => Number.isFinite(Number(value)) ? Number(value) : 0) : [0, 0, 0, 0, 0, 0, 0];
+		const maxValue = Math.max(...safeWeekData);
 		const yMax = maxValue > 0 ? Math.ceil(maxValue * 1.2) : 10;
 		
 		this.chartOptions = {
@@ -299,7 +300,7 @@ export default {
 		};
 		
 		this.chartDatasets = [{
-			data: weekData,
+			data: safeWeekData,
 			strokeColor: '#4A90E2',
 			fillColor: '#4A90E2',
 			gradient: true
