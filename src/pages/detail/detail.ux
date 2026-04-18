@@ -878,6 +878,8 @@ export default {
 			this.isAtChapterEnd = false
 		}
 		this.currentScrollTop = e.scrollY
+		this.scrollTopValue = e.scrollY
+		this.savedScrollOffset = e.scrollY
 		this.scheduleScrollUpdate()
 	},
 
@@ -1697,12 +1699,45 @@ export default {
 		}
 	},
 
+	onTitleClick() {
+		this.titleClickCount++
+		if (this.titleClickTimeout) clearTimeout(this.titleClickTimeout)
+
+		this.titleClickTimeout = setTimeout(() => {
+			if (this.titleClickCount === 2 && this.shortcutDoubleClickBookmark) {
+				this.addBookmark()
+			} else if (this.titleClickCount === 3 && this.shortcutTripleClickBookmarkManager) {
+				router.push({ uri: '/pages/bookmarks', params: { name: this.name } })
+			}
+			this.titleClickCount = 0
+			this.titleClickTimeout = null
+		}, 400)
+	},
+
+	onTitleLongPress() {
+		if (this.shortcutLongPressScreenOn) {
+			this.toggleKeepScreenOn()
+		}
+	},
+
 	lastPage() {
-		this.$element("scrollId").scrollBy({ top: -(this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' })
+		const scrollEl = this.$element("scrollId")
+		if (!scrollEl) return
+		const delta = this.pageHeigh * (this.autoReadDistance / 100)
+		const nextTop = Math.max(0, this.currentScrollTop - delta)
+		this.scrollTopValue = nextTop
+		this.savedScrollOffset = nextTop
+		scrollEl.scrollTo({ top: nextTop, behavior: 'smooth' })
 	},
 
 	nextPage() {
-		this.$element("scrollId").scrollBy({ top: (this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' })
+		const scrollEl = this.$element("scrollId")
+		if (!scrollEl) return
+		const delta = this.pageHeigh * (this.autoReadDistance / 100)
+		const nextTop = Math.max(0, this.currentScrollTop + delta)
+		this.scrollTopValue = nextTop
+		this.savedScrollOffset = nextTop
+		scrollEl.scrollTo({ top: nextTop, behavior: 'smooth' })
 	},
 
 	toggleKeepScreenOn() {
