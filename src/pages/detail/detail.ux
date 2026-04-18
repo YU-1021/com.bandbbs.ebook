@@ -298,13 +298,13 @@ export default {
 		global.runGC()
 	},
 
-	async onShow() {
+	onShow() {
 		if (!this.timer) {
 			this.updateTime()
 			this.timer = setInterval(() => { this.updateTime() }, 10000)
 		}
 
-		await this.loadSettings()
+		this.loadSettings()
 
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize)
 
@@ -335,13 +335,17 @@ export default {
 				delete globalThis.newChapterName
 			}
 
-			await this.loadBook()
+			this.loadBook()
 			this.isInitialized = true
 			this.lastTxtSizePage = this.txtSizePage
 			this.lastFontSize = this.fontSize
 		}
 
 		if (isChapterJump) this.showSetting = false
+
+		if (this.name) {
+			try { readingTimeStorage.recordReadingStart(this.name) } catch (e) {}
+		}
 
 		if (this.readingTimeSaveTimer) {
 			clearInterval(this.readingTimeSaveTimer)

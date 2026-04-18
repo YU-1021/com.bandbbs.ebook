@@ -8,10 +8,12 @@ const availableChaptersCache = new Map();
 const CACHE_EXPIRY = 5 * 60 * 1000;
 const CHAPTERS_PER_FILE = 100;
 
+const READ_BATCH_SIZE = 3;
+
 async function checkVersion(bookName) {
-    const newListUri = `internal://files/books/${bookName}/lindex.txt`;
+    const lindexUri = `internal://files/books/${bookName}/lindex.txt`;
     try {
-        await runAsyncFunc(file.access, { uri: newListUri });
+        await runAsyncFunc(file.access, { uri: lindexUri });
         return 'new';
     } catch (e) {
         return 'none';
@@ -31,6 +33,28 @@ async function handleOldVersion(bookName) {
     });
 }
 
+function parseLindexText(text) {
+    const lines = (text || '').split('\n');
+    const totalChapters = parseInt(lines[0], 10) || 0;
+    const syncedChapters = parseInt(lines[1], 10) || 0;
+    const ranges = [];
+
+    for (let i = 2; i < lines.length; i++) {
+        const line = (lines[i] || '').trim();
+        if (!line) continue;
+        const parts = line.split(',');
+        if (parts.length >= 2) {
+            const start = parseInt(parts[0], 10);
+            const end = parseInt(parts[1], 10);
+            if (!isNaN(start) && !isNaN(end)) {
+                ranges.push({ start, end });
+            }
+        }
+    }
+
+    return { totalChapters, syncedChapters, ranges };
+}
+
 async function loadBookIndex(bookName) {
     const cached = bookIndexCache.get(bookName);
     if (cached && (Date.now() - cached.timestamp < CACHE_EXPIRY)) {
@@ -40,19 +64,13 @@ async function loadBookIndex(bookName) {
     const indexUri = `internal://files/books/${bookName}/lindex.txt`;
     try {
         const data = await runAsyncFunc(file.readText, { uri: indexUri });
-        const lines = data.text.split('\n');
-        const totalChapters = parseInt(lines[0], 10) || 0;
-        const syncedChapters = parseInt(lines[1], 10) || 0;
-        const ranges = lines.slice(2).filter(Boolean).map(line => {
-            const [start, end] = line.split(',').map(Number);
-            return { start, end };
-        });
+        const bookIndex = parseLindexText(data.text);
 
-        const bookIndex = { totalChapters, syncedChapters, ranges };
         bookIndexCache.set(bookName, {
             index: bookIndex,
             timestamp: Date.now()
         });
+
         return bookIndex;
     } catch (error) {
         throw new Error(`Failed to load book index for ${bookName}: ${error.message}`);
@@ -82,30 +100,50 @@ async function loadChapterChunk(bookName, chunkIndex) {
 
 function parseChapterList(text) {
     if (!text) return [];
-    
+
     const lines = text.split('\n');
     const chapterMap = new Map();
-    
+
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
+
         const parts = line.split('\t');
         if (parts.length >= 2) {
             const index = parseInt(parts[0], 10);
             const name = parts[1];
             const wordCount = parts.length >= 3 ? parseInt(parts[2], 10) || 0 : 0;
-            
+
             if (!isNaN(index) && name) {
                 chapterMap.set(index, { index, name, wordCount });
             }
         }
     }
-    
+
     const chapters = Array.from(chapterMap.values());
     chapters.sort((a, b) => a.index - b.index);
-    
+
     return chapters;
+}
+
+async function readChapterFilesInBatches(files) {
+    const allChapters = [];
+
+    for (let i = 0; i < files.length; i += READ_BATCH_SIZE) {
+        const batch = files.slice(i, i + READ_BATCH_SIZE);
+
+        const results = await Promise.all(
+            batch.map(f => runAsyncFunc(file.readText, { uri: f.uri }).catch(() => null))
+        );
+
+        for (const result of results) {
+            if (!result || !result.text) continue;
+            const chapters = parseChapterList(result.text);
+            allChapters.push(...chapters);
+        }
+    }
+
+    return allChapters;
 }
 
 async function getAllAvailableChapters(bookName) {
@@ -115,28 +153,26 @@ async function getAllAvailableChapters(bookName) {
     }
 
     const indexesUri = `internal://files/books/${bookName}/indexes/`;
-    let allChapters = [];
     try {
         const res = await runAsyncFunc(file.list, { uri: indexesUri });
-        const files = res.fileList.filter(f => f.uri.endsWith('.txt'));
-        
-        const promises = files.map(f => runAsyncFunc(file.readText, { uri: f.uri }));
-        const results = await Promise.all(promises);
-        
-        for (const result of results) {
-            const chapters = parseChapterList(result.text);
-            allChapters.push(...chapters);
+        const files = (res.fileList || []).filter(f => f.uri.endsWith('.txt'));
+
+        if (files.length === 0) {
+            return [];
         }
-    } catch(e) {
+
+        const allChapters = await readChapterFilesInBatches(files);
+        allChapters.sort((a, b) => a.index - b.index);
+
+        availableChaptersCache.set(bookName, {
+            chapters: allChapters,
+            timestamp: Date.now()
+        });
+
+        return allChapters;
+    } catch (e) {
         return [];
     }
-    
-    allChapters.sort((a, b) => a.index - b.index);
-    availableChaptersCache.set(bookName, {
-        chapters: allChapters,
-        timestamp: Date.now()
-    });
-    return allChapters;
 }
 
 function clearCache(bookName) {
@@ -165,7 +201,7 @@ async function getChapterPage(bookName, page = 0, pageSize = 8) {
     const totalChapters = allChapters.length;
 
     if (totalChapters === 0) {
-         return { chapters: [], totalPages: 0, currentPage: 0, totalChapters: 0 };
+        return { chapters: [], totalPages: 0, currentPage: 0, totalChapters: 0 };
     }
 
     const totalPages = Math.ceil(totalChapters / pageSize) || 1;
@@ -174,14 +210,16 @@ async function getChapterPage(bookName, page = 0, pageSize = 8) {
     const start = safePage * pageSize;
     const end = start + pageSize;
     const pageChapters = allChapters.slice(start, end);
-    
+
     return {
         chapters: pageChapters,
         totalPages,
         currentPage: safePage,
         totalChapters,
     };
-}async function getChapterByIndex(bookName, chapterIndex) {
+}
+
+async function getChapterByIndex(bookName, chapterIndex) {
     const chunkIndex = Math.floor(chapterIndex / CHAPTERS_PER_FILE) + 1;
     const chunk = await loadChapterChunk(bookName, chunkIndex);
     return chunk.find(ch => ch.index === chapterIndex) || null;
@@ -218,18 +256,25 @@ async function deleteChapter(bookName, chapterIndex) {
         const contentUri = `internal://files/books/${bookName}/content/${chapterIndex}.txt`;
         try {
             await runAsyncFunc(file.delete, { uri: contentUri });
-        } catch (e) {
-        }
+        } catch (e) {}
 
         const chunkIndex = Math.floor(chapterIndex / CHAPTERS_PER_FILE) + 1;
         const chunkUri = `internal://files/books/${bookName}/indexes/${chunkIndex}.txt`;
+<<<<<<< HEAD
         
+=======
+
+        let removed = false;
+
+>>>>>>> 99dd21b (修复)
         try {
             const chunkData = await runAsyncFunc(file.readText, { uri: chunkUri });
             const lines = chunkData.text.split('\n');
+
             const filteredLines = lines.filter(line => {
                 const trimmed = line.trim();
                 if (!trimmed) return false;
+
                 const parts = trimmed.split('\t');
                 if (parts.length >= 2) {
                     const index = parseInt(parts[0], 10);
@@ -237,6 +282,7 @@ async function deleteChapter(bookName, chapterIndex) {
                 }
                 return true;
             });
+<<<<<<< HEAD
             
             if (filteredLines.length > 0) {
                 const newContent = filteredLines.join('\n') + '\n';
@@ -249,9 +295,36 @@ async function deleteChapter(bookName, chapterIndex) {
                     await runAsyncFunc(file.delete, { uri: chunkUri });
                 } catch (e) {
                 }
+=======
+
+            if (removed) {
+                if (filteredLines.length > 0) {
+                    const newContent = filteredLines.join('\n') + '\n';
+                    await runAsyncFunc(file.writeText, {
+                        uri: chunkUri,
+                        text: newContent
+                    });
+                } else {
+                    try {
+                        await runAsyncFunc(file.delete, { uri: chunkUri });
+                    } catch (e) {}
+                }
+
+                const lindexUri = `internal://files/books/${bookName}/lindex.txt`;
+                try {
+                    const lindexData = await runAsyncFunc(file.readText, { uri: lindexUri });
+                    const lLines = lindexData.text.split('\n');
+                    let syncedCount = parseInt(lLines[1], 10) || 0;
+                    if (syncedCount > 0) syncedCount--;
+                    lLines[1] = syncedCount.toString();
+                    await runAsyncFunc(file.writeText, { uri: lindexUri, text: lLines.join('\n') });
+
+                    // 删除后清理缓存，避免读到旧数据
+                    clearCache(bookName);
+                } catch (e) {}
+>>>>>>> 99dd21b (修复)
             }
-        } catch (e) {
-        }
+        } catch (e) {}
 
         return true;
     } catch (error) {
