@@ -6,14 +6,14 @@
 		  <div class="preview-screen">
 			  <div class="content-area">
 				  <text static class="preview-text">
-					  自动翻页
+					  翻页距离
 				  </text>
 			  </div>
 		  </div>
 		  <div class="info-panel">
 			  <text static class="info-title">翻页距离</text>
 			  <text class="info-value">{{ distanceValue }}%</text>
-			  <text static class="info-desc">自动翻页时滚动的距离</text>
+			  <text static class="info-desc">自动翻页和点击翻页时滚动的距离</text>
 		  </div>
 	  </div>
 	  
