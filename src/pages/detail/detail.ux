@@ -862,6 +862,8 @@ export default {
 			this.isAtChapterEnd = false
 		}
 		this.currentScrollTop = e.scrollY
+		this.scrollTopValue = e.scrollY
+		this.savedScrollOffset = e.scrollY
 		this.scheduleScrollUpdate()
 
 		if (this.contentHeight > this.scrollHeight) {
@@ -1673,8 +1675,24 @@ export default {
 		}
 	},
 
-	lastPage() { this.$element("scrollId").scrollBy({ top: -(this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }) },
-	nextPage() { this.$element("scrollId").scrollBy({ top: (this.pageHeigh * (this.autoReadDistance / 100)), behavior: 'smooth' }) },
+	lastPage() {
+		const scrollEl = this.$element("scrollId")
+		if (!scrollEl) return
+		const delta = this.pageHeigh * (this.autoReadDistance / 100)
+		const nextTop = Math.max(0, this.currentScrollTop - delta)
+		this.scrollTopValue = nextTop
+		this.savedScrollOffset = nextTop
+		scrollEl.scrollTo({ top: nextTop, behavior: 'smooth' })
+	},
+	nextPage() {
+		const scrollEl = this.$element("scrollId")
+		if (!scrollEl) return
+		const delta = this.pageHeigh * (this.autoReadDistance / 100)
+		const nextTop = Math.max(0, this.currentScrollTop + delta)
+		this.scrollTopValue = nextTop
+		this.savedScrollOffset = nextTop
+		scrollEl.scrollTo({ top: nextTop, behavior: 'smooth' })
+	},
 
 	toggleKeepScreenOn() {
 		this.isKeepScreenOn = !this.isKeepScreenOn
