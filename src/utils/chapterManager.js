@@ -260,13 +260,9 @@ async function deleteChapter(bookName, chapterIndex) {
 
         const chunkIndex = Math.floor(chapterIndex / CHAPTERS_PER_FILE) + 1;
         const chunkUri = `internal://files/books/${bookName}/indexes/${chunkIndex}.txt`;
-<<<<<<< HEAD
-        
-=======
 
         let removed = false;
 
->>>>>>> 99dd21b (修复)
         try {
             const chunkData = await runAsyncFunc(file.readText, { uri: chunkUri });
             const lines = chunkData.text.split('\n');
@@ -278,24 +274,13 @@ async function deleteChapter(bookName, chapterIndex) {
                 const parts = trimmed.split('\t');
                 if (parts.length >= 2) {
                     const index = parseInt(parts[0], 10);
-                    return index !== chapterIndex;
+                    if (index === chapterIndex) {
+                        removed = true;
+                        return false;
+                    }
                 }
                 return true;
             });
-<<<<<<< HEAD
-            
-            if (filteredLines.length > 0) {
-                const newContent = filteredLines.join('\n') + '\n';
-                await runAsyncFunc(file.writeText, { 
-                    uri: chunkUri, 
-                    text: newContent 
-                });
-            } else {
-                try {
-                    await runAsyncFunc(file.delete, { uri: chunkUri });
-                } catch (e) {
-                }
-=======
 
             if (removed) {
                 if (filteredLines.length > 0) {
@@ -319,10 +304,8 @@ async function deleteChapter(bookName, chapterIndex) {
                     lLines[1] = syncedCount.toString();
                     await runAsyncFunc(file.writeText, { uri: lindexUri, text: lLines.join('\n') });
 
-                    // 删除后清理缓存，避免读到旧数据
                     clearCache(bookName);
                 } catch (e) {}
->>>>>>> 99dd21b (修复)
             }
         } catch (e) {}
 
