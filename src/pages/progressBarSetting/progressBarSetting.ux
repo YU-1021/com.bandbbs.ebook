@@ -16,6 +16,13 @@
 			</div>
 			<img src="{{showProgressBarPercent ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
 		</list-item>
+		<list-item class="item" @click="toggleShowPercentOnly" if="{{showProgressBarPercent}}" type="item">
+			<div class="item-content">
+				<text class="itemtext" static>仅显示百分比</text>
+				<text class="itemtext2" static>隐藏底部进度</text>
+			</div>
+			<img src="{{showProgressPercentOnly ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
+		</list-item>
 		<list-item class="item" @click="routerTo('progressBarOpacitySetting')" type="item">
 			<div class="item-content">
 				<text class="itemtext" static>进度条透明度</text>
@@ -48,6 +55,7 @@ export default {
   private: {
     showProgressBar: true,
     showProgressBarPercent: false,
+    showProgressPercentOnly: false,
     progressBarHeight: 8,
     nowTime: "00:00",
     timer: null,
@@ -88,6 +96,13 @@ export default {
       key: 'EBOOK_SHOW_PROGRESS_BAR_PERCENT',
       success: (data) => {
         if (data !== '') this.showProgressBarPercent = data === 'true';
+      }
+    });
+
+    storage.get({
+      key: 'EBOOK_SHOW_PROGRESS_PERCENT_ONLY',
+      success: (data) => {
+        if (data !== '') this.showProgressPercentOnly = data === 'true';
       }
     });
   },
@@ -135,9 +150,11 @@ export default {
     this.progressBarHeight = 8;
     this.showProgressBar = true;
     this.showProgressBarPercent = false;
+    this.showProgressPercentOnly = false;
     storage.set({ key: "EBOOK_PROGRESS_BAR_HEIGHT", value: '8' });
     storage.set({ key: "EBOOK_SHOW_PROGRESS_BAR", value: 'true' });
     storage.set({ key: "EBOOK_SHOW_PROGRESS_BAR_PERCENT", value: 'false' });
+    storage.set({ key: "EBOOK_SHOW_PROGRESS_PERCENT_ONLY", value: 'false' });
   },
 
   back() {
@@ -154,9 +171,24 @@ export default {
 
   toggleShowPercent() {
     this.showProgressBarPercent = !this.showProgressBarPercent;
+    if (!this.showProgressBarPercent) {
+      this.showProgressPercentOnly = false;
+      storage.set({
+        key: 'EBOOK_SHOW_PROGRESS_PERCENT_ONLY',
+        value: 'false'
+      });
+    }
     storage.set({
       key: 'EBOOK_SHOW_PROGRESS_BAR_PERCENT',
       value: this.showProgressBarPercent.toString()
+    });
+  },
+
+  toggleShowPercentOnly() {
+    this.showProgressPercentOnly = !this.showProgressPercentOnly;
+    storage.set({
+      key: 'EBOOK_SHOW_PROGRESS_PERCENT_ONLY',
+      value: this.showProgressPercentOnly.toString()
     });
   }
 }
