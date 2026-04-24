@@ -321,12 +321,12 @@ export default {
 		global.runGC()
 	},
 
-	onShow() {
+	async onShow() {
 		if (!this.timer) {
 			this.updateStatus()
 			this.timer = setInterval(() => { this.updateStatus() }, 10000)
 		}
-		this.loadSettings()
+		await this.loadSettings()
 
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize)
 
@@ -352,7 +352,7 @@ export default {
 				delete globalThis.newChapterIndex
 				delete globalThis.newChapterName
 			}
-			this.loadBook()
+			await this.loadBook()
 			this.isInitialized = true
 			this.lastTxtSizePage = this.txtSizePage
 			this.lastFontSize = this.fontSize
@@ -638,6 +638,7 @@ export default {
 		this.currentChapterIndexInAll = chapterIdxInAll
 		this.currentChapterName = chapter.name
 		this.currentChapterWordCount = chapter.wordCount || 0
+		this.updatePageDisplay()
 		this.cPath = `internal://files/books/${this.name}/content/${chapter.index}.txt`
 
 		if (this.chapterSwitchShowInfo) {
