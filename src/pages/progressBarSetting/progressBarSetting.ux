@@ -21,7 +21,7 @@
 				<text class="itemtext" static>仅显示百分比</text>
 				<text class="itemtext2" static>隐藏底部进度</text>
 			</div>
-			<img src="{{showProgressPercentOnly ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
+			<img src="{{showProgressPercentOnly ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch"/>
 		</list-item>
 		<list-item class="item" @click="routerTo('progressBarOpacitySetting')" type="item">
 			<div class="item-content">
