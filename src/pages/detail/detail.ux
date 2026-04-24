@@ -1,5 +1,5 @@
 <template>
-	<div class="page">
+	<div class="page" style="background-color: {{backgroundColor}};">
 		<scroll
 			id="scrollId"
 			if="{{readMode !== 'nostalgic'}}"
@@ -24,17 +24,17 @@
 
 				<div style="flex-direction: column; width: 100%; padding-bottom: 20px;">
 					<div if="{{chapterStartEmptyLines}}" style="height: 100px; width: 100%;"></div>
-					<text if="{{chapterStartNumber}}" style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 10px;">第 {{currentChapterIndexInAll + 1}} / {{totalChapters}} 章</text>
-					<text if="{{chapterStartName}}" style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 1.2}}px; font-weight: bold; margin-bottom: 20px;">{{currentChapterName}}</text>
-					<text if="{{chapterStartWordCount && page1 && page1.offset === 0}}" style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">本章 {{currentChapterWordCount}} 字</text>
-					<text if="{{chapterStartWordCount && (!page1 || page1.offset !== 0)}}" style="width: 340px; text-align: center; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">- 滑到顶部以加载上一段 -</text>
+					<text if="{{chapterStartNumber}}" style="width: 340px; text-align: left; color: {{fontColorWithOpacity}}; font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 10px;">第 {{currentChapterIndexInAll + 1}} / {{totalChapters}} 章</text>
+					<text if="{{chapterStartName}}" style="width: 340px; text-align: left; color: {{fontColorWithOpacity}}; font-size: {{fontSize * 1.2}}px; font-weight: bold; margin-bottom: 20px;">{{currentChapterName}}</text>
+					<text if="{{chapterStartWordCount && page1 && page1.offset === 0}}" style="width: 340px; text-align: left; color: {{fontColorWithOpacity}}; font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">本章 {{currentChapterWordCount}} 字</text>
+					<text if="{{chapterStartWordCount && (!page1 || page1.offset !== 0)}}" style="width: 340px; text-align: center; color: {{fontColorWithOpacity}}; font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">- 滑到顶部以加载上一段 -</text>
 				</div>
 
 				<div id="page1" style="flex-direction: column; width: 100%; flex-shrink: 0;">
-					<text style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page1.text}}</text>
+					<text style="width: 340px; text-align: left; color: {{fontColorWithOpacity}}; font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page1.text}}</text>
 				</div>
 				<div id="page2" if="{{page2}}" style="flex-direction: column; width: 100%; flex-shrink: 0;">
-					<text style="width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page2.text}}</text>
+					<text style="width: 340px; text-align: left; color: {{fontColorWithOpacity}}; font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page2.text}}</text>
 				</div>
 
 				<div if="{{chapterSwitchStyle == 'button' && isAtChapterEnd && currentChapterIndexInAll < totalChapters - 1}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onNextChapterClick">
@@ -46,7 +46,7 @@
 		
 		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 340px; height: 340px; top: 70px; left: 70px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" @longpress="onTxtLongPress">
 			<div id="nostalgicContainer" style="position: absolute; width: 340px; height: {{pageHeigh}}px; top: {{nostalgicTop}}px; overflow: hidden; pointer-events: none;">
-				<text id="box1" style="lines: -1; width: 340px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
+				<text id="box1" style="lines: -1; width: 340px; text-align: left; color: {{fontColorWithOpacity}}; font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
 			</div>
 		</div>
 
@@ -88,6 +88,8 @@ export default {
 		lineHeight: 34,
 		pageHeigh: 340,
 		scrollHeight: 340,
+		fontColor: '#FFFFFF',
+		backgroundColor: '#000000',
 		showSetting: true,
 		showDetails: false,
 		batteryLevel: '--',
@@ -181,7 +183,8 @@ export default {
 		_scrollUpdateScheduled: false,
 		_lastCalcTime: 0,
 		loadingBookToken: 0,
-		nostalgicHeightCacheKey: ''
+		nostalgicHeightCacheKey: '',
+		fontColorWithOpacity: 'rgba(255,255,255,1)'
 	},
 	protected: {
 		name: '',
@@ -223,6 +226,15 @@ export default {
 	updatePageDisplay() {
 		this.currentPage = this.currentChapterIndexInAll + 1
 		this.totalPages = this.totalChapters
+	},
+
+	hexToRgba(hex, alpha) {
+		const color = (hex || '').replace('#', '')
+		if (color.length !== 6) return `rgba(255,255,255,${alpha})`
+		const r = parseInt(color.substring(0, 2), 16)
+		const g = parseInt(color.substring(2, 4), 16)
+		const b = parseInt(color.substring(4, 6), 16)
+		return `rgba(${r},${g},${b},${alpha})`
 	},
 
 	resetTransientFlags() {
@@ -367,7 +379,8 @@ export default {
 			'EBOOK_ALWAYS_SHOW_TIME', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY', 'EBOOK_READ_MODE',
 			'EBOOK_NOSTALGIC_PAGE_TURN_MODE', 'EBOOK_BOLD_ENABLED', 'EBOOK_CHAPTER_START_EMPTY_LINES',
 			'EBOOK_CHAPTER_START_NUMBER', 'EBOOK_CHAPTER_START_NAME',
-			'EBOOK_CHAPTER_START_WORD_COUNT', 'EBOOK_CHAPTER_SWITCH_SHOW_INFO'
+			'EBOOK_CHAPTER_START_WORD_COUNT', 'EBOOK_CHAPTER_SWITCH_SHOW_INFO',
+			'EBOOK_FONT_COLOR', 'EBOOK_BACKGROUND_COLOR'
 		]
 		const defaults = {
 			'EBOOK_TXTSZPAGE': 400, 'EBOOK_FONT': 30, 'EBOOK_OPACITY': 100, 'EBOOK_SWIPE': 'column',
@@ -377,7 +390,8 @@ export default {
 			'EBOOK_ALWAYS_SHOW_TIME': false, 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 200, 'EBOOK_READ_MODE': 'scroll',
 			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'topBottomClick', 'EBOOK_BOLD_ENABLED': true, 'EBOOK_CHAPTER_START_EMPTY_LINES': false,
 			'EBOOK_CHAPTER_START_NUMBER': false, 'EBOOK_CHAPTER_START_NAME': false,
-			'EBOOK_CHAPTER_START_WORD_COUNT': false, 'EBOOK_CHAPTER_SWITCH_SHOW_INFO': false
+			'EBOOK_CHAPTER_START_WORD_COUNT': false, 'EBOOK_CHAPTER_SWITCH_SHOW_INFO': false,
+			'EBOOK_FONT_COLOR': '#FFFFFF', 'EBOOK_BACKGROUND_COLOR': '#000000'
 		}
 		const mapping = {
 			'EBOOK_TXTSZPAGE': 'txtSizePage', 'EBOOK_FONT': 'fontSize', 'EBOOK_OPACITY': 'opacity',
@@ -388,7 +402,8 @@ export default {
 			'EBOOK_ALWAYS_SHOW_TIME': 'alwaysShowTime', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 'alwaysShowTimeSensitivity',
 			'EBOOK_READ_MODE': 'readMode', 'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
 			'EBOOK_CHAPTER_START_NUMBER': 'chapterStartNumber', 'EBOOK_CHAPTER_START_NAME': 'chapterStartName', 'EBOOK_CHAPTER_START_WORD_COUNT': 'chapterStartWordCount',
-			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo'
+			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo',
+			'EBOOK_FONT_COLOR': 'fontColor', 'EBOOK_BACKGROUND_COLOR': 'backgroundColor'
 		}
 
 		const promises = keys.map(key => new Promise(resolve => {
@@ -412,6 +427,7 @@ export default {
 			else if (typeof defaultValue === 'boolean') this[prop] = val === 'true' || val === true
 			else this[prop] = val
 		})
+		this.fontColorWithOpacity = this.hexToRgba(this.fontColor, this.opacity / 100)
 
 		this.lineHeight = parseInt((-0.01) * (this.fontSize ** 2) + 1.62 * this.fontSize - 3.23)
 		this.updateScrollHeight()
