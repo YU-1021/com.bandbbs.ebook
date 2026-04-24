@@ -916,46 +916,32 @@ export default {
 		const scrollPosBeforeLoad = this.currentScrollTop
 		const page1El = this.$element("page1")
 
-		if (!page1El) {
-			const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
+		const applyShift = (removeHeight) => {
 			this.page1 = this.page2
 			this.page2 = nextPageData
-			const newScrollPos = Math.max(0, scrollPosBeforeLoad - estimatedHeight + this.lineHeight)
+			const safeRemoveHeight = Math.max(0, Math.floor(removeHeight || 0))
+			const newScrollPos = Math.max(0, scrollPosBeforeLoad - safeRemoveHeight)
 			this.scrollTopValue = newScrollPos
 			this.currentScrollTop = newScrollPos
+			this.savedScrollOffset = newScrollPos
 			this.currentFileOffset = this.page1.offset
 			this.calculateDisplayProgress()
 			this.saveData(true)
 			this.wait = false
-			this.updateContentHeight()
+			this.updateContentHeight(true)
+		}
+
+		if (!page1El) {
+			const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
+			applyShift(estimatedHeight)
 			return
 		}
 
 		page1El.getBoundingClientRect({
-			success: (rect) => {
-				this.page1 = this.page2
-				this.page2 = nextPageData
-				const newScrollPos = Math.max(0, scrollPosBeforeLoad - rect.height + this.lineHeight)
-				this.scrollTopValue = newScrollPos
-				this.currentScrollTop = newScrollPos
-				this.currentFileOffset = this.page1.offset
-				this.calculateDisplayProgress()
-				this.saveData(true)
-				this.wait = false
-				this.updateContentHeight()
-			},
+			success: (rect) => applyShift(rect.height),
 			fail: () => {
 				const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
-				this.page1 = this.page2
-				this.page2 = nextPageData
-				const newScrollPos = Math.max(0, scrollPosBeforeLoad - estimatedHeight + this.lineHeight)
-				this.scrollTopValue = newScrollPos
-				this.currentScrollTop = newScrollPos
-				this.currentFileOffset = this.page1.offset
-				this.calculateDisplayProgress()
-				this.saveData(true)
-				this.wait = false
-				this.updateContentHeight()
+				applyShift(estimatedHeight)
 			}
 		})
 	},
@@ -967,34 +953,39 @@ export default {
 			this.loadingPrev = false
 			return
 		}
+		const oldPage1 = this.page1
 		const newOffset = Math.max(0, this.page1.offset - this.txtSizePage * 2)
 		this.readFileText(newOffset, (str, bytesRead) => {
 			this.loadingPrev = false
 			if (str) {
 				const prevPageData = { text: str, offset: newOffset, length: bytesRead }
-				this.page2 = this.page1
-				this.page1 = prevPageData
-				this.$element("page1").getBoundingClientRect({
-					success: (rect) => {
-						const newScrollPos = this.currentScrollTop + rect.height
-						this.scrollTopValue = newScrollPos
-						this.currentScrollTop = newScrollPos
-						this.currentFileOffset = this.page1.offset
-						this.calculateDisplayProgress()
-						this.saveData(true)
-						this.wait = false
-						this.updateContentHeight()
-					},
+				const applyShift = (addHeight) => {
+					this.page2 = oldPage1
+					this.page1 = prevPageData
+					const safeAddHeight = Math.max(0, Math.floor(addHeight || 0))
+					const newScrollPos = Math.max(0, this.currentScrollTop + safeAddHeight)
+					this.scrollTopValue = newScrollPos
+					this.currentScrollTop = newScrollPos
+					this.savedScrollOffset = newScrollPos
+					this.currentFileOffset = this.page1.offset
+					this.calculateDisplayProgress()
+					this.saveData(true)
+					this.wait = false
+					this.updateContentHeight(true)
+				}
+
+				const oldPage1El = this.$element("page1")
+				if (!oldPage1El) {
+					const estimatedHeight = this.estimateTextHeightByText(oldPage1 ? oldPage1.text : '')
+					applyShift(estimatedHeight)
+					return
+				}
+
+				oldPage1El.getBoundingClientRect({
+					success: (rect) => applyShift(rect.height),
 					fail: () => {
-						const estimatedHeight = this.estimateTextHeightByText(this.page1.text)
-						const newScrollPos = this.currentScrollTop + estimatedHeight
-						this.scrollTopValue = newScrollPos
-						this.currentScrollTop = newScrollPos
-						this.currentFileOffset = this.page1.offset
-						this.calculateDisplayProgress()
-						this.saveData(true)
-						this.wait = false
-						this.updateContentHeight()
+						const estimatedHeight = this.estimateTextHeightByText(oldPage1 ? oldPage1.text : '')
+						applyShift(estimatedHeight)
 					}
 				})
 			} else {
