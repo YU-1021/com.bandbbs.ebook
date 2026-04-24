@@ -225,6 +225,60 @@ async function getChapterByIndex(bookName, chapterIndex) {
     return chunk.find(ch => ch.index === chapterIndex) || null;
 }
 
+async function getFirstAvailableChapter(bookName) {
+    const availableChapters = await getAllAvailableChapters(bookName);
+    return availableChapters.length > 0 ? availableChapters[0] : null;
+}
+
+async function findNearestAvailableChapter(bookName, chapterIndex, direction = 1) {
+    const availableChapters = await getAllAvailableChapters(bookName);
+    if (availableChapters.length === 0) {
+        return null;
+    }
+
+    const exact = availableChapters.find(ch => ch.index === chapterIndex);
+    if (exact) {
+        return exact;
+    }
+
+    if (direction < 0) {
+        for (let i = availableChapters.length - 1; i >= 0; i--) {
+            if (availableChapters[i].index < chapterIndex) {
+                return availableChapters[i];
+            }
+        }
+    } else {
+        for (let i = 0; i < availableChapters.length; i++) {
+            if (availableChapters[i].index > chapterIndex) {
+                return availableChapters[i];
+            }
+        }
+    }
+
+    return null;
+}
+
+async function getAdjacentAvailableChapter(bookName, chapterIndex, offset) {
+    const availableChapters = await getAllAvailableChapters(bookName);
+    if (availableChapters.length === 0) {
+        return null;
+    }
+
+    const currentPos = availableChapters.findIndex(ch => ch.index === chapterIndex);
+    if (currentPos === -1) {
+        return offset < 0
+            ? findNearestAvailableChapter(bookName, chapterIndex, -1)
+            : findNearestAvailableChapter(bookName, chapterIndex, 1);
+    }
+
+    const targetPos = currentPos + (offset < 0 ? -1 : 1);
+    if (targetPos < 0 || targetPos >= availableChapters.length) {
+        return null;
+    }
+
+    return availableChapters[targetPos];
+}
+
 async function getTotalChapters(bookName) {
     const version = await checkVersion(bookName);
     if (version === 'none') {
@@ -322,6 +376,9 @@ export default {
     clearCache,
     getChapterPage,
     getChapterByIndex,
+    getFirstAvailableChapter,
+    findNearestAvailableChapter,
+    getAdjacentAvailableChapter,
     loadBookIndex,
     getTotalChapters,
     getSyncedChapters,
