@@ -1,0 +1,293 @@
+<template>
+  <div class="page" style="flex-direction: column;">
+    <list class="list">
+      <list-item type="item" class="content-card preview-card">
+        <div class="preview" style="background-color: {{selectedBackgroundColor}};">
+          <text class="preview-title" style="color: {{selectedFontColor}};">阅读主题预览</text>
+          <text class="preview-text" style="color: {{selectedFontColor}};">春风又绿江南岸，明月何时照我还。</text>
+        </div>
+      </list-item>
+
+      <list-item type="item" class="content-card section-card">
+        <div class="section">
+          <text class="section-title" static>字体颜色</text>
+          <scroll class="color-scroll" scroll-x="true" scroll-y="false">
+            <div class="color-row">
+              <div class="color-item {{selectedFontColor === '#FFFFFF' ? 'color-item-active' : ''}}" @click="selectFontColor('#FFFFFF')" style="background-color: #FFFFFF;"></div>
+              <div class="color-item {{selectedFontColor === '#F5E6C8' ? 'color-item-active' : ''}}" @click="selectFontColor('#F5E6C8')" style="background-color: #F5E6C8;"></div>
+              <div class="color-item {{selectedFontColor === '#FFE4E1' ? 'color-item-active' : ''}}" @click="selectFontColor('#FFE4E1')" style="background-color: #FFE4E1;"></div>
+              <div class="color-item {{selectedFontColor === '#FFF4B8' ? 'color-item-active' : ''}}" @click="selectFontColor('#FFF4B8')" style="background-color: #FFF4B8;"></div>
+              <div class="color-item {{selectedFontColor === '#C7EDCC' ? 'color-item-active' : ''}}" @click="selectFontColor('#C7EDCC')" style="background-color: #C7EDCC;"></div>
+              <div class="color-item {{selectedFontColor === '#D6F5F3' ? 'color-item-active' : ''}}" @click="selectFontColor('#D6F5F3')" style="background-color: #D6F5F3;"></div>
+              <div class="color-item {{selectedFontColor === '#DCEBFF' ? 'color-item-active' : ''}}" @click="selectFontColor('#DCEBFF')" style="background-color: #DCEBFF;"></div>
+              <div class="color-item {{selectedFontColor === '#E9DDFF' ? 'color-item-active' : ''}}" @click="selectFontColor('#E9DDFF')" style="background-color: #E9DDFF;"></div>
+              <div class="color-item {{selectedFontColor === '#B8C0CC' ? 'color-item-active' : ''}}" @click="selectFontColor('#B8C0CC')" style="background-color: #B8C0CC;"></div>
+              <div class="color-item {{selectedFontColor === '#2B2B2B' ? 'color-item-active' : ''}}" @click="selectFontColor('#2B2B2B')" style="background-color: #2B2B2B;"></div>
+              <div class="color-item {{selectedFontColor === '#8B4513' ? 'color-item-active' : ''}}" @click="selectFontColor('#8B4513')" style="background-color: #8B4513;"></div>
+              <div class="color-item {{selectedFontColor === '#0F172A' ? 'color-item-active' : ''}}" @click="selectFontColor('#0F172A')" style="background-color: #0F172A;"></div>
+            </div>
+          </scroll>
+        </div>
+      </list-item>
+
+      <list-item type="item" class="content-card section-card">
+        <div class="section">
+          <text class="section-title" static>背景颜色</text>
+          <scroll class="color-scroll" scroll-x="true" scroll-y="false">
+            <div class="color-row">
+              <div class="color-item {{selectedBackgroundColor === '#000000' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#000000')" style="background-color: #000000;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#1C1C1E' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#1C1C1E')" style="background-color: #1C1C1E;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#2D3748' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#2D3748')" style="background-color: #2D3748;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#F5E6C8' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#F5E6C8')" style="background-color: #F5E6C8;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#FFF7E6' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#FFF7E6')" style="background-color: #FFF7E6;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#FFF1F2' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#FFF1F2')" style="background-color: #FFF1F2;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#FFF9C4' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#FFF9C4')" style="background-color: #FFF9C4;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#C7EDCC' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#C7EDCC')" style="background-color: #C7EDCC;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#E6FFFA' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#E6FFFA')" style="background-color: #E6FFFA;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#DCEBFF' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#DCEBFF')" style="background-color: #DCEBFF;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#EEF2FF' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#EEF2FF')" style="background-color: #EEF2FF;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#F3E8FF' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#F3E8FF')" style="background-color: #F3E8FF;"></div>
+              <div class="color-item {{selectedBackgroundColor === '#FAFAFA' ? 'color-item-active' : ''}}" @click="selectBackgroundColor('#FAFAFA')" style="background-color: #FAFAFA;"></div>
+            </div>
+          </scroll>
+        </div>
+      </list-item>
+    </list>
+
+    <img static src="/common/images/hd.png" style="position: absolute;left: 0px;top: 0px;width: 432px;height: 102px;" />
+    <img static src="/common/images/back.png" @click="back" style="position: absolute;left: 38px;top: 24px;width: 82px;height: 82px;"/>
+    <img static src="/common/images/reset.png" @click="reset" style="position: absolute;left: 322px;top: 24px;width: 82px;height: 82px;"/>
+    <text class="time-text">{{nowTime}}</text>
+    <text static class="title-text">阅读主题</text>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '../../utils/storage.js'
+
+const DEFAULT_FONT_COLOR = '#FFFFFF'
+const DEFAULT_BACKGROUND_COLOR = '#000000'
+
+export default {
+  private: {
+    selectedFontColor: DEFAULT_FONT_COLOR,
+    selectedBackgroundColor: DEFAULT_BACKGROUND_COLOR,
+    nowTime: '00:00',
+    timer: null,
+    timeFormat: '24h'
+  },
+
+  onInit() {
+    storage.get({
+      key: 'EBOOK_TIME_FORMAT',
+      success: (data) => {
+        if (data) this.timeFormat = data
+        this.updateTime()
+      },
+      fail: () => {
+        this.updateTime()
+      }
+    })
+
+    this.timer = setInterval(() => {
+      this.updateTime()
+    }, 60000)
+
+    this.loadTheme()
+  },
+
+  onDestroy() {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
+  },
+
+  updateTime() {
+    const date = new Date()
+    let hours = date.getHours()
+    let minutes = date.getMinutes()
+
+    if (this.timeFormat === '12h') {
+      let ampm = hours >= 12 ? '下午' : '上午'
+      hours = hours % 12
+      hours = hours ? hours : 12
+      minutes = minutes < 10 ? '0' + minutes : minutes
+      this.nowTime = `${ampm} ${hours}:${minutes}`
+    } else {
+      hours = hours < 10 ? '0' + hours : hours
+      minutes = minutes < 10 ? '0' + minutes : minutes
+      this.nowTime = `${hours}:${minutes}`
+    }
+  },
+
+  loadTheme() {
+    storage.get({
+      key: 'EBOOK_FONT_COLOR',
+      success: (data) => {
+        if (data) this.selectedFontColor = data
+      },
+      fail: () => {
+        this.selectedFontColor = DEFAULT_FONT_COLOR
+      }
+    })
+
+    storage.get({
+      key: 'EBOOK_BACKGROUND_COLOR',
+      success: (data) => {
+        if (data) this.selectedBackgroundColor = data
+      },
+      fail: () => {
+        this.selectedBackgroundColor = DEFAULT_BACKGROUND_COLOR
+      }
+    })
+  },
+
+  selectFontColor(color) {
+    this.selectedFontColor = color
+    storage.set({
+      key: 'EBOOK_FONT_COLOR',
+      value: color
+    })
+  },
+
+  selectBackgroundColor(color) {
+    this.selectedBackgroundColor = color
+    storage.set({
+      key: 'EBOOK_BACKGROUND_COLOR',
+      value: color
+    })
+  },
+
+  reset() {
+    this.selectedFontColor = DEFAULT_FONT_COLOR
+    this.selectedBackgroundColor = DEFAULT_BACKGROUND_COLOR
+    storage.set({ key: 'EBOOK_FONT_COLOR', value: DEFAULT_FONT_COLOR })
+    storage.set({ key: 'EBOOK_BACKGROUND_COLOR', value: DEFAULT_BACKGROUND_COLOR })
+  },
+
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 432px;
+  height: 514px;
+  background-color: #000000;
+}
+
+.list {
+  width: 432px;
+  height: 514px;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  padding: 116px 12px 24px 12px;
+}
+
+.content-card {
+  width: 100%;
+  padding: 0;
+  margin-bottom: 12px;
+  background-color: #262626;
+  border-radius: 36px;
+}
+
+.preview-card {
+  height: 168px;
+}
+
+.section-card {
+  height: 160px;
+}
+
+.preview {
+  width: 100%;
+  height: 100%;
+  border-radius: 36px;
+  padding: 20px 24px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.preview-title {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.preview-text {
+  font-size: 28px;
+  line-height: 38px;
+  font-weight: bold;
+}
+
+.section {
+  width: 100%;
+  height: 100%;
+  padding: 18px 20px;
+  flex-direction: column;
+}
+
+.section-title {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 12px;
+}
+
+.color-scroll {
+  width: 100%;
+  height: 76px;
+}
+
+.color-row {
+  height: 76px;
+  flex-direction: row;
+  align-items: center;
+  padding-right: 4px;
+}
+
+.color-item {
+  width: 76px;
+  height: 76px;
+  border-radius: 38px;
+  margin-right: 16px;
+  border-width: 4px;
+  border-color: transparent;
+}
+
+.color-item-active {
+  border-color: #0D6EFF;
+}
+
+.time-text {
+  position: absolute;
+  left: 130px;
+  top: 16px;
+  width: 172px;
+  line-height: 32px;
+  font-weight: bold;
+  font-size: 24px;
+  color: rgba(255,255,255,0.6);
+  text-align: center;
+}
+
+.title-text {
+  position: absolute;
+  left: 130px;
+  top: 46px;
+  width: 172px;
+  line-height: 42px;
+  font-weight: bold;
+  font-size: 32px;
+  color: white;
+  text-align: center;
+}
+</style>

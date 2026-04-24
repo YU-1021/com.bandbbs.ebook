@@ -166,6 +166,9 @@
       "pages/readingTime": {
         "component": "readingTime"
       },
+      "pages/readingThemeSetting": {
+        "component": "readingThemeSetting"
+      },
       "pages/storageManagement": {
         "component": "storageManagement"
       },
