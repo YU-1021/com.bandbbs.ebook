@@ -37,6 +37,13 @@
 			  </div>
 			  <img src="/common/images/enter.png" class="arrow" static/>
 		  </list-item>
+		  <list-item class="item" @click="routerTo('readingThemeSetting')" type="item">
+			  <div class="item-content">
+				  <text class="itemtext" static>阅读主题</text>
+				  <text class="itemtext2" static>字体和背景颜色</text>
+			  </div>
+			  <img src="/common/images/enter.png" style="width:40px;height: 40px;" static/>
+		  </list-item>
 		  <list-item class="item" @click="routerTo('marginSetting')" type="item">
 			  <div class="item-content">
 				  <text class="itemtext" static>垂直边距</text>
