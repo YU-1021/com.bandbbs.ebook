@@ -154,7 +154,7 @@
       timeFormat: '24h',
       readMode: 'scroll',
       boldEnabled: true,
-	  defaultKeepScreenOn: false
+	  defaultKeepScreenOn: true
     },
 
     onInit() {
@@ -194,9 +194,9 @@
         this.boldEnabled = true;
       }});
 	  storage.get({ key: 'EBOOK_DEFAULT_KEEP_SCREEN_ON', success: (data) => {
-		this.defaultKeepScreenOn = data ? data === 'true' : false;
+		this.defaultKeepScreenOn = data ? data === 'true' : true;
 	  }, fail: () => {
-		this.defaultKeepScreenOn = false;
+		this.defaultKeepScreenOn = true;
 	  }});
     },
 
@@ -232,6 +232,8 @@
 		key: 'EBOOK_DEFAULT_KEEP_SCREEN_ON',
 		value: this.defaultKeepScreenOn.toString()
 	  });
+	  delete globalThis.isKeepScreenOn;
+	  delete globalThis.keepScreenOnFromReader;
 	},
 
 	routerTo(url) {

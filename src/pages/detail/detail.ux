@@ -333,7 +333,7 @@ export default {
 
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize)
 
-		if (typeof globalThis.isKeepScreenOn !== 'undefined') {
+		if (globalThis.keepScreenOnFromReader && typeof globalThis.isKeepScreenOn !== 'undefined') {
 			const newKeepScreenOn = !!globalThis.isKeepScreenOn
 			const keepScreenOnChanged = this.isKeepScreenOn !== newKeepScreenOn
 			this.isKeepScreenOn = newKeepScreenOn
@@ -341,6 +341,7 @@ export default {
 			if (keepScreenOnChanged) {
 				prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' })
 			}
+			delete globalThis.keepScreenOnFromReader
 		} else {
 			this.isKeepScreenOn = this.defaultKeepScreenOn
 			globalThis.isKeepScreenOn = this.isKeepScreenOn
@@ -425,7 +426,7 @@ export default {
 			'EBOOK_TIME_FORMAT': 'timeFormat', 'EBOOK_PROGRESS_SAVE_MODE': 'saveMode', 'EBOOK_PROGRESS_SAVE_INTERVAL': 'saveIntervalValue',
 			'EBOOK_ALWAYS_SHOW_TIME': 'alwaysShowTime', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 'alwaysShowTimeSensitivity',
 			'EBOOK_READ_MODE': 'readMode', 'EBOOK_TEXT_READER_MARQUEE_ENABLED': 'textReaderMarqueeEnabled', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': 'detailProgressMarqueeEnabled',
-			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_DEFAULT_KEEP_SCREEN_ON': 'isKeepScreenOn', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
+			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_DEFAULT_KEEP_SCREEN_ON': 'defaultKeepScreenOn', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
 			'EBOOK_CHAPTER_START_NUMBER': 'chapterStartNumber', 'EBOOK_CHAPTER_START_NAME': 'chapterStartName', 'EBOOK_CHAPTER_START_WORD_COUNT': 'chapterStartWordCount',
 			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo', 'EBOOK_SWIPE_SIDE_CLICK_ENABLED': 'swipeSideClickEnabled',
 			'EBOOK_FONT_COLOR': 'fontColor', 'EBOOK_BACKGROUND_COLOR': 'backgroundColor'
@@ -1246,6 +1247,7 @@ export default {
 		try {
 			this.calculateDisplayProgress()
 			this.saveData(true)
+		globalThis.keepScreenOnFromReader = true
 			globalThis.readerChapterAllSize = this.allSize
 			globalThis.readerChapterIndex = this.currentChapterIndexInAll
 			globalThis.readerChapterProgressPercent = parseFloat(this.displayProgress) || 0
