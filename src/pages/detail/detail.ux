@@ -332,7 +332,6 @@ export default {
 	onInit() {
 		this.updateStatus()
 		this.timer = setInterval(() => { this.updateStatus() }, 10000)
-		globalThis.isKeepScreenOn = this.isKeepScreenOn
 		global.runGC()
 	},
 
