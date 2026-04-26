@@ -983,14 +983,18 @@ export default {
 			this.page2 = nextPageData
 			const safeRemoveHeight = Math.max(0, Math.floor(removeHeight || 0))
 			const newScrollPos = Math.max(0, scrollPosBeforeLoad - safeRemoveHeight)
-			this.scrollTopValue = newScrollPos
-			this.currentScrollTop = newScrollPos
-			this.savedScrollOffset = newScrollPos
 			this.currentFileOffset = this.page1.offset
-			this.calculateDisplayProgress()
-			this.saveData(true)
-			this.wait = false
-			this.updateContentHeight(true)
+			setTimeout(() => {
+				this.scrollTopValue = newScrollPos
+				this.currentScrollTop = newScrollPos
+				this.savedScrollOffset = newScrollPos
+				const scrollEl = this.$element("scrollId")
+				if (scrollEl) scrollEl.scrollTo({ top: newScrollPos })
+				this.calculateDisplayProgress()
+				this.saveData(true)
+				this.wait = false
+				this.updateContentHeight(true)
+			}, 50)
 		}
 
 		if (!page1El) {
