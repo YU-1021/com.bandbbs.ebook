@@ -994,7 +994,7 @@ export default {
 				this.saveData(true)
 				this.wait = false
 				this.updateContentHeight(true)
-			}, 50)
+			}, 30)
 		}
 
 		if (!page1El) {
