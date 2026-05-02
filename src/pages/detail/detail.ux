@@ -624,8 +624,8 @@ export default {
 		}
 
 		if (chapterToLoadIndex === null || chapterToLoadIndex === undefined) {
-			const firstAvailableChapter = await chapterManager.getFirstAvailableChapter(this.name)
-			if (firstAvailableChapter) chapterToLoadIndex = firstAvailableChapter.index
+			const available = await chapterManager.getAllAvailableChapters(this.name)
+			if (available.length > 0) chapterToLoadIndex = available[0].index
 			else {
 				this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
 				this.page2 = null
@@ -645,94 +645,60 @@ export default {
 		if (chapterToLoadIndex < 0 || chapterToLoadIndex >= this.totalChapters) chapterToLoadIndex = 0
 		this.currentFileOffset = offsetInChapter
 		this.savedScrollOffset = scrollOffset
-		this.scrollTopValue = Math.max(0, scrollOffset)
-		this.currentScrollTop = Math.max(0, scrollOffset)
+		this.scrollTopValue = scrollOffset
+		this.currentScrollTop = scrollOffset
 		this._shouldScrollToTop = shouldScrollToTop
 
-		const loaded = await this.loadChapter(chapterToLoadIndex, null, { fallbackDirection: 1, suppressToast: true })
-		if (!loaded) {
-			const firstAvailableChapter = await chapterManager.getFirstAvailableChapter(this.name)
-			if (!firstAvailableChapter) {
-				this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
-				return
-			}
-			this.currentFileOffset = 0
-			this.savedScrollOffset = 0
-			this.scrollTopValue = 0
-			this.currentScrollTop = 0
-			await this.loadChapter(firstAvailableChapter.index, null, { fallbackDirection: 1, skipFallback: true })
-		}
-
-			if (token !== this.loadingBookToken) return
+		this.loadChapter(chapterToLoadIndex, () => {
+				if (token !== this.loadingBookToken) return
 		if (this.readMode === 'nostalgic') {
-			this.wait = false
-			this.loadNostalgicChapter(offsetInChapter)
-		} else {
-			this.loadInitialSegments()
-			this.isAtChapterStart = shouldScrollToTop || (this.currentFileOffset === 0 && this.savedScrollOffset < 10)
-			this.isNearTopForHd = this.currentFileOffset === 0 && this.savedScrollOffset < this.alwaysShowTimeSensitivity
-		}
+				this.wait = false
+				this.loadNostalgicChapter(offsetInChapter)
+			} else {
+				this.loadInitialSegments()
+				this.isAtChapterStart = shouldScrollToTop || (this.currentFileOffset === 0 && this.savedScrollOffset < 10)
+				this.isNearTopForHd = this.currentFileOffset === 0 && this.savedScrollOffset < this.alwaysShowTimeSensitivity
+			}
+		})
 	},
 
-	async loadChapter(chapterIdxInAll, callback, options = {}) {
-		const { fallbackDirection = 1, skipFallback = false, suppressToast = false } = options
-		if (chapterIdxInAll < 0 || chapterIdxInAll >= this.totalChapters) { if (callback) callback(false); return false }
-		let chapter = await chapterManager.getChapterByIndex(this.name, chapterIdxInAll)
-		if (!chapter && !skipFallback) {
-			chapter = await chapterManager.findNearestAvailableChapter(this.name, chapterIdxInAll, fallbackDirection)
-		}
+	async loadChapter(chapterIdxInAll, callback) {
+		if (chapterIdxInAll < 0 || chapterIdxInAll >= this.totalChapters) { if (callback) callback(); return }
+		const chapter = await chapterManager.getChapterByIndex(this.name, chapterIdxInAll)
 		if (!chapter) {
-			if (!suppressToast) prompt.showToast({ message: '无法加载章节信息' })
-			if (callback) callback(false)
-			return false
+			prompt.showToast({ message: '无法加载章节信息' })
+			if (callback) callback()
+			return
 		}
 
 		this.page1 = { text: "", offset: 0, length: 0 }
 		this.page2 = null
 		this.isAtChapterStart = false
 		this.isAtChapterEnd = false
-		this.currentChapterIndexInAll = chapter.index
+		this.currentChapterIndexInAll = chapterIdxInAll
 		this.currentChapterName = chapter.name
 		this.currentChapterWordCount = chapter.wordCount || 0
 		this.updatePageDisplay()
 		this.cPath = `internal://files/books/${this.name}/content/${chapter.index}.txt`
 
 		if (this.chapterSwitchShowInfo) {
-			const prev = await chapterManager.getAdjacentAvailableChapter(this.name, chapter.index, -1)
+			const prev = chapterIdxInAll > 0 ? await chapterManager.getChapterByIndex(this.name, chapterIdxInAll - 1) : null
 			this.prevChapterName = prev ? prev.name : ''
-			const next = await chapterManager.getAdjacentAvailableChapter(this.name, chapter.index, 1)
+			const next = chapterIdxInAll < this.totalChapters - 1 ? await chapterManager.getChapterByIndex(this.name, chapterIdxInAll + 1) : null
 			this.nextChapterName = next ? next.name : ''
 		}
 
-		return await new Promise((resolve) => {
-			file.get({
-				uri: this.cPath,
-				success: (data) => {
-					this.allSize = data.length
-					if (callback) callback(true)
-					resolve(true)
-				},
-				fail: async (d, code) => {
-					this.allSize = 0
-					if (!skipFallback && code === 301) {
-						const fallbackChapter = await chapterManager.findNearestAvailableChapter(this.name, chapter.index, fallbackDirection)
-						if (fallbackChapter && fallbackChapter.index !== chapter.index) {
-							const loaded = await this.loadChapter(fallbackChapter.index, callback, {
-								fallbackDirection,
-								skipFallback: true,
-								suppressToast
-							})
-							resolve(loaded)
-							return
-						}
-					}
-					if (!suppressToast) {
-						prompt.showToast({ message: code === 301 ? '文件不存在，请重新同步该章节' : `加载章节失败: ${code}` })
-					}
-					if (callback) callback(false)
-					resolve(false)
-				}
-			})
+		file.get({
+			uri: this.cPath,
+			success: (data) => {
+				this.allSize = data.length
+				if (callback) callback()
+			},
+			fail: (d, code) => {
+				this.allSize = 0
+				prompt.showToast({ message: code === 301 ? '文件不存在，请重新同步该章节' : `加载章节失败: ${code}` })
+				if (callback) callback()
+			}
 		})
 	},
 
@@ -1108,15 +1074,21 @@ export default {
 	onPrevChapterClick() { this.changeChapter(-1) },
 	onNextChapterClick() { this.changeChapter(1) },
 
-	async changeChapter(offset) {
+	changeChapter(offset) {
 		if (this.wait) return
 		this.wait = true
 		this.isChangingChapter = true
+		const nextIndex = this.currentChapterIndexInAll + offset
 
-		const targetChapter = await chapterManager.getAdjacentAvailableChapter(this.name, this.currentChapterIndexInAll, offset)
-		if (!targetChapter) {
-			prompt.showToast({ message: offset < 0 ? '已是第一章' : '已是最后一章' })
-			if (offset > 0 && this.autoInterval) {
+		if (nextIndex < 0) {
+			prompt.showToast({ message: '已是第一章' })
+			this.wait = false
+			this.isChangingChapter = false
+			return
+		}
+		if (nextIndex >= this.totalChapters) {
+			prompt.showToast({ message: '已是最后一章' })
+			if (this.autoInterval) {
 				clearInterval(this.autoInterval)
 				this.autoInterval = null
 				prompt.showToast({ message: '已关闭自动翻页' })
@@ -1130,7 +1102,6 @@ export default {
 			this.isChangingChapter = false
 			return
 		}
-
 		global.runGC()
 		this.isAtChapterEnd = false
 		this.currentFileOffset = 0
@@ -1138,34 +1109,26 @@ export default {
 		this.scrollTopValue = 0
 		this.currentScrollTop = 0
 
-		const loaded = await this.loadChapter(targetChapter.index, null, {
-			fallbackDirection: offset,
-			skipFallback: true
-		})
-		if (!loaded) {
-			this.wait = false
-			this.isChangingChapter = false
-			return
-		}
-
-		if (this.readMode === 'nostalgic') {
-			this.loadNostalgicChapter(offset > 0 ? 0 : -1)
-			this.isChangingChapter = false
-		} else {
-			this.page1 = { text: "加载中...", offset: 0, length: 0 }
-			this.page2 = null
-			if (offset > 0) {
-				this.loadInitialSegments()
-				this.isAtChapterStart = false
-				this.isNearTopForHd = true
+		this.loadChapter(nextIndex, () => {
+			if (this.readMode === 'nostalgic') {
+				this.loadNostalgicChapter(offset > 0 ? 0 : -1)
+				this.isChangingChapter = false
 			} else {
-				this.loadEndAndScroll()
-				this.isAtChapterStart = false
-				this.isNearTopForHd = false
+				this.page1 = { text: "加载中...", offset: 0, length: 0 }
+				this.page2 = null
+				if (offset > 0) {
+					this.loadInitialSegments()
+					this.isAtChapterStart = false
+					this.isNearTopForHd = true
+				} else {
+					this.loadEndAndScroll()
+					this.isAtChapterStart = false
+					this.isNearTopForHd = false
+				}
 			}
-		}
-		this.chapterProgress = offset > 0 ? 0 : 100
-		this.saveData(true)
+			this.chapterProgress = offset > 0 ? 0 : 100
+			this.saveData(true)
+		})
 	},
 
 	loadEndAndScroll() {
