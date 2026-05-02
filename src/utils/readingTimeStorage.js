@@ -219,60 +219,82 @@ function updateAggregates(bookData, duration, sessionDate, startTime, endTime) {
     });
 }
 
+async function persistSession(bookName, endTime, options = {}) {
+    const { minimumDuration = 10, resetSession = true } = options;
+
+    if (!bookName || sessionStartTime === 0) return false;
+
+    const duration = Math.floor((endTime - sessionStartTime) / 1000);
+
+    if (duration < minimumDuration) {
+        if (resetSession) {
+            sessionStartTime = 0;
+            currentReadingBook = null;
+        }
+        return false;
+    }
+
+    try {
+        const readingTimeData = await getAllReadingTime();
+        let bookData = ensureBookData(readingTimeData[bookName]);
+        readingTimeData[bookName] = bookData;
+
+        const sessionDate = todayDateString();
+        updateAggregates(bookData, duration, sessionDate, sessionStartTime, endTime);
+
+        if (resetSession) {
+            sessionStartTime = 0;
+            currentReadingBook = null;
+        } else {
+            sessionStartTime = endTime;
+            currentReadingBook = bookName;
+        }
+
+        await scheduleSave();
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 async function recordReadingStart(bookName) {
     if (!bookName) return;
     if (!(await isReadingTimeRecordingEnabled())) return;
+
+    if (currentReadingBook && currentReadingBook !== bookName && sessionStartTime > 0) {
+        await persistSession(currentReadingBook, Date.now(), { minimumDuration: 0, resetSession: true });
+    }
 
     currentReadingBook = bookName;
     sessionStartTime = Date.now();
 }
 
 async function recordReadingEnd(bookName) {
-    if (!bookName || bookName !== currentReadingBook) return;
+    if (!bookName) return;
     if (!(await isReadingTimeRecordingEnabled())) return;
-    if (sessionStartTime === 0) return;
 
-    const endTime = Date.now();
-    const duration = Math.floor((endTime - sessionStartTime) / 1000);
+    if (sessionStartTime === 0) {
+        currentReadingBook = null;
+        return;
+    }
 
-    sessionStartTime = 0;
-    currentReadingBook = null;
+    const targetBookName = currentReadingBook || bookName;
+    if (targetBookName !== bookName) return;
 
-    if (duration < 10) return;
-
-    try {
-        const readingTimeData = await getAllReadingTime();
-        let bookData = ensureBookData(readingTimeData[bookName]);
-        readingTimeData[bookName] = bookData;
-
-        const sessionDate = todayDateString();
-        updateAggregates(bookData, duration, sessionDate, endTime - duration * 1000, endTime);
-
-        await scheduleSave();
-    } catch (e) {}
+    await persistSession(targetBookName, Date.now(), { minimumDuration: 10, resetSession: true });
 }
 
 async function saveCurrentSession(bookName) {
-    if (!bookName || bookName !== currentReadingBook) return;
-    if (sessionStartTime === 0) return;
+    if (!bookName) return;
+    if (!(await isReadingTimeRecordingEnabled())) return;
 
-    const now = Date.now();
-    const duration = Math.floor((now - sessionStartTime) / 1000);
-    if (duration < 10) return;
-
-    try {
-        const readingTimeData = await getAllReadingTime();
-        let bookData = ensureBookData(readingTimeData[bookName]);
-        readingTimeData[bookName] = bookData;
-
-        const sessionDate = todayDateString();
-        updateAggregates(bookData, duration, sessionDate, sessionStartTime, now);
-
-        sessionStartTime = now;
+    if (currentReadingBook !== bookName || sessionStartTime === 0) {
         currentReadingBook = bookName;
+        sessionStartTime = Date.now();
+        return;
+    }
 
-        await scheduleSave();
-    } catch (e) {}
+    await persistSession(bookName, Date.now(), { minimumDuration: 10, resetSession: false });
 }
 
 async function getReadingTime(bookName) {
