@@ -358,10 +358,6 @@ export default {
 		}
 		if (isChapterJump) {
 			this.showSetting = false
-
-		if (this.name) {
-			try { readingTimeStorage.recordReadingStart(this.name) } catch (e) {}
-		}
 			this.showDetails = false
 		}
 		
@@ -610,7 +606,13 @@ export default {
 				this.isAtChapterStart = shouldScrollToTop || (this.currentFileOffset === 0 && this.savedScrollOffset < 10)
 				this.isNearTopForHd = this.currentFileOffset === 0 && this.savedScrollOffset < this.alwaysShowTimeSensitivity
 			}
+			this.startReadingTimeRecording()
 		})
+	},
+
+	startReadingTimeRecording() {
+		if (!this.name || this.totalChapters === 0) return
+		try { readingTimeStorage.recordReadingStart(this.name) } catch (e) {}
 	},
 
 	async loadChapter(chapterIdxInAll, callback) {
