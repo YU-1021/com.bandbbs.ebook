@@ -934,7 +934,6 @@ export default {
 
 	onScroll(e) {
 		if (this.wait) return
-		if (this.isAtChapterEnd && e.scrollY < this.currentScrollTop) this.isAtChapterEnd = false
 		this.currentScrollTop = e.scrollY
 		this.scrollTopValue = e.scrollY
 		this.savedScrollOffset = e.scrollY
@@ -942,11 +941,12 @@ export default {
 
 		if (this.contentHeight > this.scrollHeight) {
 			const threshold = this.auto ? 40 : this.chapterSwitchSensitivity
-			if (this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)) {
-				const lastSeg = this.page2 || this.page1
-				if ((lastSeg.offset + lastSeg.length) >= this.allSize && !this.isAtChapterEnd) {
-					this.isAtChapterEnd = true
-				}
+			const endTriggerTop = this.contentHeight - this.scrollHeight - threshold
+			const lastSeg = this.page2 || this.page1
+			const isLastSeg = (lastSeg.offset + lastSeg.length) >= this.allSize
+			if (isLastSeg) {
+				const isNearBottom = this.currentScrollTop >= endTriggerTop
+				if (this.isAtChapterEnd !== isNearBottom) this.isAtChapterEnd = isNearBottom
 			}
 		}
 	},
