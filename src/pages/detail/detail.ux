@@ -964,51 +964,34 @@ export default {
 		}
 		this.readFileText(newOffset, (str, bytesRead) => {
 			this.loadingNext = false
-			if (str) {
-				setTimeout(() => {
-					this.shiftPagesForward({ text: str, offset: newOffset, length: bytesRead })
-				}, 30)
-			} else {
-				this.wait = false
-			}
+			if (str) this.shiftPagesForward({ text: str, offset: newOffset, length: bytesRead })
+			else this.wait = false
 		})
 	},
 
 	shiftPagesForward(nextPageData) {
 		const scrollPosBeforeLoad = this.currentScrollTop
 		const page1El = this.$element("page1")
-
-		const applyShift = (removeHeight) => {
-			this.page1 = this.page2
-			this.page2 = nextPageData
-			const safeRemoveHeight = Math.max(0, Math.floor(removeHeight || 0))
-			const newScrollPos = Math.max(0, scrollPosBeforeLoad - safeRemoveHeight)
-			this.currentFileOffset = this.page1.offset
-			setTimeout(() => {
-				this.scrollTopValue = newScrollPos
-				this.currentScrollTop = newScrollPos
-				this.savedScrollOffset = newScrollPos
-				const scrollEl = this.$element("scrollId")
-				if (scrollEl) scrollEl.scrollTo({ top: newScrollPos })
-				this.calculateDisplayProgress()
-				this.saveData(true)
-				this.wait = false
-				this.updateContentHeight(true)
-			}, 30)
-		}
-
 		if (!page1El) {
-			const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
-			applyShift(estimatedHeight)
+			this.wait = false
 			return
 		}
 
 		page1El.getBoundingClientRect({
-			success: (rect) => applyShift(rect.height),
-			fail: () => {
-				const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
-				applyShift(estimatedHeight)
-			}
+			success: (rect) => {
+				this.page1 = this.page2
+				this.page2 = nextPageData
+				const newScrollPos = Math.max(0, scrollPosBeforeLoad - rect.height + this.lineHeight)
+				this.scrollTopValue = newScrollPos
+				this.currentScrollTop = newScrollPos
+				this.savedScrollOffset = newScrollPos
+				this.currentFileOffset = this.page1.offset
+				this.calculateDisplayProgress()
+				this.saveData(true)
+				this.wait = false
+				this.updateContentHeight(true)
+			},
+			fail: () => { this.wait = false }
 		})
 	},
 
@@ -1019,44 +1002,28 @@ export default {
 			this.loadingPrev = false
 			return
 		}
-		const oldPage1 = this.page1
 		const newOffset = Math.max(0, this.page1.offset - this.txtSizePage * 2)
 		this.readFileText(newOffset, (str, bytesRead) => {
 			this.loadingPrev = false
 			if (str) {
 				const prevPageData = { text: str, offset: newOffset, length: bytesRead }
-				const applyShift = (addHeight) => {
-					this.page2 = oldPage1
-					this.page1 = prevPageData
-					const safeAddHeight = Math.max(0, Math.floor(addHeight || 0))
-					const newScrollPos = Math.max(0, this.currentScrollTop + safeAddHeight)
-					this.scrollTopValue = newScrollPos
-					this.currentScrollTop = newScrollPos
-					this.savedScrollOffset = newScrollPos
-					this.currentFileOffset = this.page1.offset
-					this.calculateDisplayProgress()
-					this.saveData(true)
-					this.wait = false
-					this.updateContentHeight(true)
-				}
-
-				const oldPage1El = this.$element("page1")
-				if (!oldPage1El) {
-					const estimatedHeight = this.estimateTextHeightByText(oldPage1 ? oldPage1.text : '')
-					applyShift(estimatedHeight)
-					return
-				}
-
-				oldPage1El.getBoundingClientRect({
-					success: (rect) => applyShift(rect.height),
-					fail: () => {
-						const estimatedHeight = this.estimateTextHeightByText(oldPage1 ? oldPage1.text : '')
-						applyShift(estimatedHeight)
-					}
+				this.page2 = this.page1
+				this.page1 = prevPageData
+				this.$element("page1").getBoundingClientRect({
+					success: (rect) => {
+						const newScrollPos = this.currentScrollTop + rect.height
+						this.scrollTopValue = newScrollPos
+						this.currentScrollTop = newScrollPos
+						this.savedScrollOffset = newScrollPos
+						this.currentFileOffset = this.page1.offset
+						this.calculateDisplayProgress()
+						this.saveData(true)
+						this.wait = false
+						this.updateContentHeight(true)
+					},
+					fail: () => { this.wait = false }
 				})
-			} else {
-				this.wait = false
-			}
+			} else this.wait = false
 		})
 	},
 
