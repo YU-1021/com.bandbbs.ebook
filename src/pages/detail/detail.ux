@@ -348,16 +348,17 @@ export default {
 			const newKeepScreenOn = !!globalThis.isKeepScreenOn
 			const keepScreenOnChanged = this.isKeepScreenOn !== newKeepScreenOn
 			this.isKeepScreenOn = newKeepScreenOn
-			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn })
+			this.applyKeepScreenOnState()
 			if (keepScreenOnChanged) {
 				prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' })
 			}
 			delete globalThis.keepScreenOnFromReader
 		} else {
 			this.isKeepScreenOn = this.defaultKeepScreenOn
-			globalThis.isKeepScreenOn = this.isKeepScreenOn
-			brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn })
+			this.applyKeepScreenOnState()
 		}
+
+		this.applyKeepScreenOnState()
 
 		storage.get({ key: 'EBOOK_TEACHER_SCREEN_ENABLED', success: (data) => { this.teacherScreenEnabled = data === 'true'; } })
 
@@ -1683,11 +1684,15 @@ export default {
 		scrollEl.scrollTo({ top: nextTop, behavior: 'smooth' })
 	},
 
+	applyKeepScreenOnState() {
+		globalThis.isKeepScreenOn = this.isKeepScreenOn
+		brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn })
+	},
+
 	toggleKeepScreenOn() {
 		this.isKeepScreenOn = !this.isKeepScreenOn
 		this.keepScreenOnByAuto = false
-		globalThis.isKeepScreenOn = this.isKeepScreenOn
-		brightness.setKeepScreenOn({ keepScreenOn: this.isKeepScreenOn })
+		this.applyKeepScreenOnState()
 		prompt.showToast({ message: this.isKeepScreenOn ? '已开启屏幕常亮' : '已关闭屏幕常亮' })
 	},
 
