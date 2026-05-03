@@ -1,8 +1,7 @@
 <import name="number" src="../../components/number_choose/number_choose"></import>
 <template>
   <div class="page" style="flex-direction: column;">
-    <progress show="{{showProgressBar && !showProgressPercentOnly}}" type="arc" percent="60" style="position: absolute; left: {{previewOffset}}px; top: {{previewOffset}}px; width: {{previewSize}}px; height: {{previewSize}}px; color: #23A9F2; stroke-width: {{progressBarHeight}}px; layer-color: rgba(0,0,0,0); pointer-events: none;start-angle: 50deg;total-angle: 305deg;"></progress>
-
+    <progress show="{{showProgressBar && !showProgressPercentOnly}}" type="arc" percent="60" style="position: absolute; left: {{previewOffset}}px; top: {{previewOffset}}px; width: {{previewSize}}px; height: {{previewSize}}px; color: #23A9F2; stroke-width: {{progressBarHeight}}px; layer-color: rgba(0,0,0,0);"></progress>
     <list class="list">
       <list-item class="page-title-item" type="title">
         <text static class="page-title">阅读进度条</text>
