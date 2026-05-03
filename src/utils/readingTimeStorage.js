@@ -450,6 +450,64 @@ function calculateBookStats(bookData) {
     return stats;
 }
 
+function getLast7DaysReadingTime(sessionsOrBookData) {
+    const dates = getLast7DaysDateStrings();
+    const dailyData = {};
+    dates.forEach(date => {
+        dailyData[date] = 0;
+    });
+
+    if (!sessionsOrBookData) {
+        return dates.map(date => 0);
+    }
+
+    if (sessionsOrBookData.dailySeconds && typeof sessionsOrBookData.dailySeconds === 'object') {
+        dates.forEach(date => {
+            dailyData[date] = Math.max(0, toSafeNumber(sessionsOrBookData.dailySeconds[date], 0));
+        });
+        return dates.map(date => Math.floor(dailyData[date] / 60));
+    }
+
+    if (Array.isArray(sessionsOrBookData)) {
+        sessionsOrBookData.forEach(session => {
+            const date = session.date;
+            if (dailyData.hasOwnProperty(date)) {
+                dailyData[date] += Math.max(0, toSafeNumber(session.duration, 0));
+            }
+        });
+        return dates.map(date => Math.floor(dailyData[date] / 60));
+    }
+
+    return dates.map(date => 0);
+}
+
+function getLast7DaysGlobalReadingTime(allBooksData) {
+    const dates = getLast7DaysDateStrings();
+    const dailyData = {};
+    dates.forEach(date => {
+        dailyData[date] = 0;
+    });
+
+    Object.values(allBooksData || {}).forEach(bookData => {
+        if (!bookData) return;
+
+        if (bookData.dailySeconds && typeof bookData.dailySeconds === 'object') {
+            dates.forEach(date => {
+                dailyData[date] += Math.max(0, toSafeNumber(bookData.dailySeconds[date], 0));
+            });
+        } else if (bookData.sessions && bookData.sessions.length > 0) {
+            bookData.sessions.forEach(session => {
+                const date = session.date;
+                if (dailyData.hasOwnProperty(date)) {
+                    dailyData[date] += Math.max(0, toSafeNumber(session.duration, 0));
+                }
+            });
+        }
+    });
+
+    return dates.map(date => Math.floor(dailyData[date] / 60));
+}
+
 async function saveReadingTime(readingTimeData) {
     readingTimeCache = readingTimeData || {};
     dirty = false;
@@ -493,5 +551,7 @@ export default {
     formatDuration,
     calculateGlobalStats,
     calculateBookStats,
-    clearAllReadingTime
+    clearAllReadingTime,
+    getLast7DaysReadingTime,
+    getLast7DaysGlobalReadingTime
 };
