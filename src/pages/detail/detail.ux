@@ -289,6 +289,14 @@ export default {
 		}, 80)
 	},
 
+	getChapterEndTriggerThreshold() {
+		let threshold = this.auto ? 40 : this.chapterSwitchSensitivity
+		if (this.chapterSwitchStyle === 'button') {
+			threshold += this.chapterSwitchHeight + 20
+		}
+		return threshold
+	},
+
 	updateScrollDerivedFlags() {
 		const isStart = this.currentFileOffset === 0 && this.currentScrollTop < 10
 		if (this.isAtChapterStart !== isStart) this.isAtChapterStart = isStart
@@ -296,14 +304,14 @@ export default {
 		const isNearTop = this.currentFileOffset === 0 && this.currentScrollTop < this.alwaysShowTimeSensitivity
 		if (this.isNearTopForHd !== isNearTop) this.isNearTopForHd = isNearTop
 
-		if (this.contentHeight > this.scrollHeight) {
-			const threshold = this.auto ? 40 : this.chapterSwitchSensitivity
-			if (this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)) {
-				const lastSeg = this.page2 || this.page1
-				if ((lastSeg.offset + lastSeg.length) >= this.allSize) {
-					if (!this.isAtChapterEnd) this.isAtChapterEnd = true
-				}
-			}
+		const lastSeg = this.page2 || this.page1
+		const isLastSeg = lastSeg && (lastSeg.offset + lastSeg.length) >= this.allSize
+		if (this.contentHeight > this.scrollHeight && isLastSeg) {
+			const threshold = this.getChapterEndTriggerThreshold()
+			const isNearBottom = this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)
+			if (this.isAtChapterEnd !== isNearBottom) this.isAtChapterEnd = isNearBottom
+		} else if (this.isAtChapterEnd) {
+			this.isAtChapterEnd = false
 		}
 	},
 
@@ -471,7 +479,10 @@ export default {
 			const el = this.$element("contentContainer")
 			if (!el) return
 			el.getBoundingClientRect({
-				success: (rect) => { this.contentHeight = rect.height }
+				success: (rect) => {
+					this.contentHeight = rect.height
+					this.updateScrollDerivedFlags()
+				}
 			})
 		}, 50)
 	},
@@ -861,15 +872,15 @@ export default {
 		this.savedScrollOffset = e.scrollY
 		this.scheduleScrollUpdate()
 
-		if (this.contentHeight > this.scrollHeight) {
-			const threshold = this.auto ? 40 : this.chapterSwitchSensitivity
+		const lastSeg = this.page2 || this.page1
+		const isLastSeg = lastSeg && (lastSeg.offset + lastSeg.length) >= this.allSize
+		if (this.contentHeight > this.scrollHeight && isLastSeg) {
+			const threshold = this.getChapterEndTriggerThreshold()
 			const endTriggerTop = this.contentHeight - this.scrollHeight - threshold
-			const lastSeg = this.page2 || this.page1
-			const isLastSeg = (lastSeg.offset + lastSeg.length) >= this.allSize
-			if (isLastSeg) {
-				const isNearBottom = this.currentScrollTop >= endTriggerTop
-				if (this.isAtChapterEnd !== isNearBottom) this.isAtChapterEnd = isNearBottom
-			}
+			const isNearBottom = this.currentScrollTop >= endTriggerTop
+			if (this.isAtChapterEnd !== isNearBottom) this.isAtChapterEnd = isNearBottom
+		} else if (this.isAtChapterEnd) {
+			this.isAtChapterEnd = false
 		}
 	},
 
