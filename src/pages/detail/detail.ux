@@ -329,13 +329,13 @@ export default {
 		global.runGC()
 	},
 
-	onShow() {
+	async onShow() {
 		if (!this.timer) {
 			this.updateStatus()
 			this.timer = setInterval(() => { this.updateStatus() }, 1000)
 		}
 
-		this.loadSettings()
+		await this.loadSettings()
 
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize)
 
