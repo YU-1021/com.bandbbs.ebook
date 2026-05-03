@@ -314,13 +314,13 @@ export default {
 		global.runGC()
 	},
 
-	onShow() {
+	async onShow() {
 		if (!this.timer) {
 			this.updateStatus()
 			this.timer = setInterval(() => { this.updateStatus() }, 10000)
 		}
 
-		this.loadSettings()
+		await this.loadSettings()
 
 		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize)
 
@@ -351,7 +351,7 @@ export default {
 				delete globalThis.newChapterIndex
 				delete globalThis.newChapterName
 			}
-			this.loadBook()
+			await this.loadBook()
 			this.isInitialized = true
 			this.lastTxtSizePage = this.txtSizePage
 			this.lastFontSize = this.fontSize
@@ -365,6 +365,12 @@ export default {
 			clearInterval(this.readingTimeSaveTimer)
 			this.readingTimeSaveTimer = null
 		}
+		this.readingTimeSaveTimer = setInterval(async () => {
+			if (this.name) {
+				try { await readingTimeStorage.saveCurrentSession(this.name) } catch (e) {}
+			}
+		}, 5 * 60 * 1000)
+
 		this.setupAutoSave()
 	},
 
