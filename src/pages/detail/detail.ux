@@ -642,8 +642,8 @@ export default {
 		this._shouldScrollToTop = shouldScrollToTop
 
 		this.loadChapter(chapterToLoadIndex, () => {
-				if (token !== this.loadingBookToken) return
-		if (this.readMode === 'nostalgic') {
+			if (token !== this.loadingBookToken) return
+			if (this.readMode === 'nostalgic') {
 				this.wait = false
 				this.loadNostalgicChapter(offsetInChapter)
 			} else {
