@@ -58,46 +58,10 @@
 
     export default {
         private: {
-            nowTime: "00:00",
-            timer: null,
-            timeFormat: '24h',
             preventParagraphSplitting: false,
-            readingTimeRecording: true
-        },
-        updateTime() {
-            const date = new Date();
-            let hours = date.getHours();
-            let minutes = date.getMinutes();
-
-            if (this.timeFormat === '12h') {
-                let ampm = hours >= 12 ? '下午' : '上午';
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-                minutes = minutes < 10 ? '0' + minutes : minutes;
-                this.nowTime = `${ampm} ${hours}:${minutes}`;
-            } else {
-                hours = hours < 10 ? '0' + hours : hours;
-                minutes = minutes < 10 ? '0' + minutes : minutes;
-                this.nowTime = `${hours}:${minutes}`;
-            }
+            readingTimeRecording: false
         },
         onInit() {
-            storage.get({
-                key: 'EBOOK_TIME_FORMAT',
-                success: (data) => {
-                    if (data) {
-                        this.timeFormat = data;
-                    }
-                    this.updateTime();
-                },
-                fail: () => {
-                    this.updateTime();
-                }
-            });
-            this.timer = setInterval(() => {
-                this.updateTime();
-            }, 1000);
-            
             storage.get({
                 key: 'EBOOK_PREVENT_PARAGRAPH_SPLITTING',
                 success: (data) => {
@@ -116,19 +80,13 @@
                     if (data !== undefined && data !== '') {
                         this.readingTimeRecording = data === 'true';
                     } else {
-                        this.readingTimeRecording = true;
+                        this.readingTimeRecording = false;
                     }
                 },
                 fail: () => {
                     this.readingTimeRecording = true;
                 }
             });
-        },
-        onDestroy() {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = null;
-            }
         },
         routerTo(url) {
             router.push({
