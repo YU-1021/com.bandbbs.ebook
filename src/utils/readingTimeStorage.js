@@ -450,8 +450,6 @@ function calculateBookStats(bookData) {
     return stats;
 }
 
-<<<<<<< HEAD
-=======
 function getLast7DaysReadingTime(sessionsOrBookData) {
     const dates = getLast7DaysDateStrings();
     const dailyData = {};
@@ -522,7 +520,6 @@ async function saveReadingTime(readingTimeData) {
     return doSaveReadingTime(readingTimeCache);
 }
 
->>>>>>> 3a748aa (阅读时长)
 async function clearAllReadingTime() {
     readingTimeCache = {};
     currentReadingBook = null;
@@ -554,5 +551,7 @@ export default {
     formatDuration,
     calculateGlobalStats,
     calculateBookStats,
-    clearAllReadingTime
+    clearAllReadingTime,
+    getLast7DaysReadingTime,
+    getLast7DaysGlobalReadingTime
 };
