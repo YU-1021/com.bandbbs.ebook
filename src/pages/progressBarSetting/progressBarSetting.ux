@@ -1,0 +1,159 @@
+<import name="number" src="../../components/number_choose/number_choose"></import>
+<template>
+  <div class="page" style="flex-direction: column;">
+    <progress show="{{showProgressBar && !showProgressPercentOnly}}" type="arc" percent="60" style="position: absolute; left: {{previewOffset}}px; top: {{previewOffset}}px; width: {{previewSize}}px; height: {{previewSize}}px; color: #23A9F2; stroke-width: {{progressBarHeight}}px; layer-color: rgba(0,0,0,0); pointer-events: none;start-angle: 50deg;total-angle: 305deg;"></progress>
+
+    <list class="list">
+      <list-item class="page-title-item" type="title">
+        <text static class="page-title">阅读进度条</text>
+      </list-item>
+      <list-item class="item" @click="toggleShowProgressBar" type="item">
+        <text class="itemtext" static>显示进度条</text>
+        <img src="{{showProgressBar ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch" />
+      </list-item>
+      <list-item class="item" @click="toggleShowPercent" type="item">
+        <text class="itemtext" static>显示百分比</text>
+        <img src="{{showProgressBarPercent ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch" />
+      </list-item>
+      <list-item class="item" @click="toggleShowPercentOnly" type="item">
+        <text class="itemtext" static>仅百分比</text>
+        <img src="{{showProgressPercentOnly ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch" />
+      </list-item>
+      <list-item style="height: 64px;" class="center" type="title">
+        <text static class="page-title" style="font-size: 38px;color: #ffffff99;">弧线宽度</text>
+      </list-item>
+      <list-item style="height: 92px;" type="item">
+        <number style="left: 80px;" max.static="30" min.static="3" step.static="1" unit.static="px" value="{{progressBarHeight}}" @change="changeHeight" name.static="弧线宽度"></number>
+      </list-item>
+    </list>
+
+    <img static src="/common/images/set.png" @click="back()" class="header-more" />
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import storage from '../../utils/storage.js'
+
+const HEIGHT_STORAGE_KEY = 'EBOOK_PROGRESS_BAR_HEIGHT'
+const SHOW_BAR_STORAGE_KEY = 'EBOOK_SHOW_PROGRESS_BAR'
+const SHOW_PERCENT_STORAGE_KEY = 'EBOOK_SHOW_PROGRESS_BAR_PERCENT'
+const PERCENT_ONLY_STORAGE_KEY = 'EBOOK_SHOW_PROGRESS_PERCENT_ONLY'
+const DEFAULT_HEIGHT = 6
+
+export default {
+  private: {
+    showProgressBar: false,
+    showProgressBarPercent: false,
+    showProgressPercentOnly: false,
+    progressBarHeight: DEFAULT_HEIGHT,
+    previewSize: 480 - DEFAULT_HEIGHT,
+    previewOffset: Math.floor(DEFAULT_HEIGHT / 2)
+  },
+
+  onInit() {
+    this.loadSettings()
+  },
+
+  onShow() {
+    this.loadSettings()
+  },
+
+  loadSettings() {
+    storage.get({
+      key: HEIGHT_STORAGE_KEY,
+      success: (data) => {
+        if (data !== undefined && data !== '') {
+          this.progressBarHeight = parseInt(data)
+        } else {
+          this.progressBarHeight = DEFAULT_HEIGHT
+        }
+        this.updatePreviewLayout()
+      },
+      fail: () => {
+        this.progressBarHeight = DEFAULT_HEIGHT
+        this.updatePreviewLayout()
+      }
+    })
+    storage.get({
+      key: SHOW_BAR_STORAGE_KEY,
+      success: (data) => {
+        this.showProgressBar = (data !== undefined && data !== '') ? data === 'true' : true
+      },
+      fail: () => {
+        this.showProgressBar = false
+      }
+    })
+    storage.get({
+      key: SHOW_PERCENT_STORAGE_KEY,
+      success: (data) => {
+        this.showProgressBarPercent = data === 'true'
+      },
+      fail: () => {
+        this.showProgressBarPercent = false
+      }
+    })
+    storage.get({
+      key: PERCENT_ONLY_STORAGE_KEY,
+      success: (data) => {
+        this.showProgressPercentOnly = data === 'true'
+      },
+      fail: () => {
+        this.showProgressPercentOnly = false
+      }
+    })
+  },
+
+  updatePreviewLayout() {
+    const strokeWidth = Math.max(1, parseInt(this.progressBarHeight) || DEFAULT_HEIGHT)
+    this.progressBarHeight = strokeWidth
+    this.previewSize = 480 - strokeWidth
+    this.previewOffset = Math.floor(strokeWidth / 2)
+  },
+
+  changeHeight(e) {
+    this.progressBarHeight = e.detail.value
+    this.updatePreviewLayout()
+    storage.set({
+      key: HEIGHT_STORAGE_KEY,
+      value: this.progressBarHeight.toString()
+    })
+  },
+
+  toggleShowProgressBar() {
+    this.showProgressBar = !this.showProgressBar
+    storage.set({
+      key: SHOW_BAR_STORAGE_KEY,
+      value: this.showProgressBar.toString()
+    })
+  },
+
+  toggleShowPercent() {
+    this.showProgressBarPercent = !this.showProgressBarPercent
+    if (!this.showProgressBarPercent) {
+      this.showProgressPercentOnly = false
+      storage.set({ key: PERCENT_ONLY_STORAGE_KEY, value: 'false' })
+    }
+    storage.set({
+      key: SHOW_PERCENT_STORAGE_KEY,
+      value: this.showProgressBarPercent.toString()
+    })
+  },
+
+  toggleShowPercentOnly() {
+    this.showProgressPercentOnly = !this.showProgressPercentOnly
+    storage.set({
+      key: PERCENT_ONLY_STORAGE_KEY,
+      value: this.showProgressPercentOnly.toString()
+    })
+  },
+
+  back() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+@import '../../common/style.css';
+</style>

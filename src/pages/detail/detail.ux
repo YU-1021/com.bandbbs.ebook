@@ -1,5 +1,6 @@
 <template>
 	<div class="page" style="background-color: {{backgroundColor}};">
+		<progress if="{{showProgressBar && !showSetting && !showProgressPercentOnly}}" type="arc" percent="{{displayProgress}}" style="position: absolute; left: 0px; top: 0px; width: 480px; height: 480px; color: #23A9F2; stroke-width: {{progressBarHeight}}px; layer-color: rgba(0,0,0,0);start-angle: 50deg;total-angle: 305deg;"></progress>
 		<scroll
 			id="scrollId"
 			if="{{readMode !== 'nostalgic'}}"
@@ -54,6 +55,8 @@
 			<img src="/common/images/hd.png" style="position: absolute; left: 0px; top: 0px; width: 480px; height: 102px;" />
 			<text style="color: rgba(255,255,255,0.6); font-size: 24px; font-weight: bold;">{{nowTime}}</text>
 		</div>
+
+		<text if="{{showProgressBarPercent && (!showSetting || showProgressPercentOnly)}}" style="position: absolute; left: 0px; bottom: {{showProgressPercentOnly ? 12 : progressBarHeight + 12}}px; width: 480px; text-align: center; color: rgba(255,255,255,0.6); font-size: 24px; font-weight: bold; pointer-events: none;">{{displayProgress}}%</text>
 	
 		<div show="{{showSetting && showDetails}}" style="position: absolute; width: 480px; height: 480px; pointer-events: none;" @click="toggleDetails">
 			<img src="/common/images/scale_c.png" style="position: absolute; width: 480px; bottom: 15px; height: 176px;" />
@@ -94,6 +97,10 @@ export default {
 		showDetails: false,
 		batteryLevel: '--',
 		displayProgress: '0',
+		showProgressBar: false,
+		progressBarHeight: 6,
+		showProgressBarPercent: false,
+		showProgressPercentOnly: false,
 		loadingNext: false,
 		loadingPrev: false,
 		page1: { text: "加载中...", offset: 0, length: 0 },
@@ -388,7 +395,8 @@ export default {
 	async loadSettings() {
 		const keys = [
 			'EBOOK_TXTSZPAGE', 'EBOOK_FONT', 'EBOOK_OPACITY', 'EBOOK_SWIPE',
-			'EBOOK_AUTO', 'EBOOK_GESTURE', 'EBOOK_CHAPTER_SWITCH_HEIGHT', 'EBOOK_CHAPTER_SWITCH_SENSITIVITY',
+			'EBOOK_AUTO', 'EBOOK_SHOW_PROGRESS_BAR', 'EBOOK_PROGRESS_BAR_HEIGHT', 'EBOOK_SHOW_PROGRESS_BAR_PERCENT', 'EBOOK_SHOW_PROGRESS_PERCENT_ONLY',
+			'EBOOK_GESTURE', 'EBOOK_CHAPTER_SWITCH_HEIGHT', 'EBOOK_CHAPTER_SWITCH_SENSITIVITY',
 			'EBOOK_SWIPE_SENSITIVITY', 'EBOOK_CHAPTER_SWITCH_STYLE', 'EBOOK_AUTO_READ_DISTANCE', 'EBOOK_PREVENT_PARAGRAPH_SPLITTING',
 			'EBOOK_TIME_FORMAT', 'EBOOK_PROGRESS_SAVE_MODE', 'EBOOK_PROGRESS_SAVE_INTERVAL',
 			'EBOOK_ALWAYS_SHOW_TIME', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY', 'EBOOK_READ_MODE', 'EBOOK_READING_TIME_RECORDING',
@@ -399,7 +407,8 @@ export default {
 		]
 		const defaults = {
 			'EBOOK_TXTSZPAGE': 400, 'EBOOK_FONT': 30, 'EBOOK_OPACITY': 100, 'EBOOK_SWIPE': 'column',
-			'EBOOK_AUTO': null, 'EBOOK_GESTURE': 'single', 'EBOOK_CHAPTER_SWITCH_HEIGHT': 80, 'EBOOK_CHAPTER_SWITCH_SENSITIVITY': 50,
+			'EBOOK_AUTO': null, 'EBOOK_SHOW_PROGRESS_BAR': false, 'EBOOK_PROGRESS_BAR_HEIGHT': 6, 'EBOOK_SHOW_PROGRESS_BAR_PERCENT': false, 'EBOOK_SHOW_PROGRESS_PERCENT_ONLY': false,
+			'EBOOK_GESTURE': 'single', 'EBOOK_CHAPTER_SWITCH_HEIGHT': 80, 'EBOOK_CHAPTER_SWITCH_SENSITIVITY': 50,
 			'EBOOK_SWIPE_SENSITIVITY': 80, 'EBOOK_CHAPTER_SWITCH_STYLE': 'button', 'EBOOK_AUTO_READ_DISTANCE': 100, 'EBOOK_PREVENT_PARAGRAPH_SPLITTING': false,
 			'EBOOK_TIME_FORMAT': '24h', 'EBOOK_PROGRESS_SAVE_MODE': 'exit', 'EBOOK_PROGRESS_SAVE_INTERVAL': 10,
 			'EBOOK_ALWAYS_SHOW_TIME': false, 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 200, 'EBOOK_READ_MODE': 'scroll', 'EBOOK_READING_TIME_RECORDING': false,
@@ -410,7 +419,8 @@ export default {
 		}
 		const mapping = {
 			'EBOOK_TXTSZPAGE': 'txtSizePage', 'EBOOK_FONT': 'fontSize', 'EBOOK_OPACITY': 'opacity',
-			'EBOOK_SWIPE': 'swipe', 'EBOOK_AUTO': 'auto', 'EBOOK_GESTURE': 'gestureMode',
+			'EBOOK_SWIPE': 'swipe', 'EBOOK_AUTO': 'auto', 'EBOOK_SHOW_PROGRESS_BAR': 'showProgressBar', 'EBOOK_PROGRESS_BAR_HEIGHT': 'progressBarHeight',
+			'EBOOK_SHOW_PROGRESS_BAR_PERCENT': 'showProgressBarPercent', 'EBOOK_SHOW_PROGRESS_PERCENT_ONLY': 'showProgressPercentOnly', 'EBOOK_GESTURE': 'gestureMode',
 			'EBOOK_CHAPTER_SWITCH_HEIGHT': 'chapterSwitchHeight', 'EBOOK_CHAPTER_SWITCH_SENSITIVITY': 'chapterSwitchSensitivity', 'EBOOK_SWIPE_SENSITIVITY': 'swipeSensitivity',
 			'EBOOK_CHAPTER_SWITCH_STYLE': 'chapterSwitchStyle', 'EBOOK_AUTO_READ_DISTANCE': 'autoReadDistance', 'EBOOK_PREVENT_PARAGRAPH_SPLITTING': 'preventParagraphSplitting',
 			'EBOOK_TIME_FORMAT': 'timeFormat', 'EBOOK_PROGRESS_SAVE_MODE': 'saveMode', 'EBOOK_PROGRESS_SAVE_INTERVAL': 'saveIntervalValue',
@@ -443,6 +453,7 @@ export default {
 			else this[prop] = val
 		})
 		this.fontColorWithOpacity = this.hexToRgba(this.fontColor, this.opacity / 100)
+		this.progressBarHeight = Math.max(1, parseInt(this.progressBarHeight) || 8)
 
 		this.lineHeight = parseInt((-0.01) * (this.fontSize ** 2) + 1.62 * this.fontSize - 3.23)
 		this.updateScrollHeight()
@@ -516,6 +527,10 @@ export default {
 	},
 
 	calculateDisplayProgress() {
+		if (!this.showProgressBar && !this.showProgressPercentOnly) {
+			this.displayProgress = '0'
+			return
+		}
 		if (this.isAtChapterEnd) {
 			this.displayProgress = '100'
 			return

@@ -139,6 +139,9 @@
       "pages/progressSavingSetting": {
         "component": "progressSavingSetting"
       },
+      "pages/progressBarSetting": {
+        "component": "progressBarSetting"
+      },
       "pages/timeSetting": {
         "component": "timeSetting"
       },
