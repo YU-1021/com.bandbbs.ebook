@@ -62,7 +62,7 @@
             timer: null,
             timeFormat: '24h',
             preventParagraphSplitting: false,
-            readingTimeRecording: true,
+            readingTimeRecording: false,
             readMode: 'scroll'
         },
         
@@ -98,11 +98,11 @@
                     if (data !== undefined && data !== '') {
                         this.readingTimeRecording = data === 'true';
                     } else {
-                        this.readingTimeRecording = true;
+                        this.readingTimeRecording = false;
                     }
                 },
                 fail: () => {
-                    this.readingTimeRecording = true;
+                    this.readingTimeRecording = false;
                 }
             });
 
@@ -159,6 +159,16 @@
                 key: 'EBOOK_READING_TIME_RECORDING',
                 value: this.readingTimeRecording.toString()
             });
+
+            if (this.readingTimeRecording) {
+                router.push({
+                    uri: '/pages/help',
+                    params: {
+                        title: '阅读时长记录提醒',
+                        content: '阅读时长记录可能会造成严重卡顿，且不接受反馈。在校学生不建议打开。'
+                    }
+                });
+            }
         },
         
         back() {

@@ -187,6 +187,7 @@ export default {
 		nextChapterName: '',
 		periodicSaveTimer: null,
 		readingTimeSaveTimer: null,
+		readingTimeRecording: false,
 		timeFormat: '24h',
 		_shouldScrollToTop: false,
 		_fromBookmark: false,
@@ -384,11 +385,13 @@ export default {
 			this.readingTimeSaveTimer = null
 		}
 
-		this.readingTimeSaveTimer = setInterval(async () => {
-			if (this.name) {
-				try { await readingTimeStorage.saveCurrentSession(this.name) } catch (e) {}
-			}
-		}, 5 * 60 * 1000)
+		if (this.readingTimeRecording) {
+			this.readingTimeSaveTimer = setInterval(async () => {
+				if (this.name) {
+					try { await readingTimeStorage.saveCurrentSession(this.name) } catch (e) {}
+				}
+			}, 5 * 60 * 1000)
+		}
 
 		this.setupAutoSave()
 	},
@@ -400,7 +403,7 @@ export default {
 			'EBOOK_PROGRESS_BAR_OPACITY', 'EBOOK_GESTURE', 'EBOOK_CHAPTER_SWITCH_HEIGHT', 'EBOOK_CHAPTER_SWITCH_SENSITIVITY',
 			'EBOOK_SWIPE_SENSITIVITY', 'EBOOK_CHAPTER_SWITCH_STYLE', 'EBOOK_AUTO_READ_DISTANCE', 'EBOOK_PREVENT_PARAGRAPH_SPLITTING',
 			'EBOOK_TIME_FORMAT', 'EBOOK_PROGRESS_SAVE_MODE', 'EBOOK_PROGRESS_SAVE_INTERVAL',
-			'EBOOK_ALWAYS_SHOW_TIME', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY', 'EBOOK_READ_MODE',
+			'EBOOK_ALWAYS_SHOW_TIME', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY', 'EBOOK_READ_MODE', 'EBOOK_READING_TIME_RECORDING',
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED', 'EBOOK_NOSTALGIC_PAGE_TURN_MODE',
 			'EBOOK_BOLD_ENABLED', 'EBOOK_DEFAULT_KEEP_SCREEN_ON', 'EBOOK_CHAPTER_START_EMPTY_LINES', 'EBOOK_CHAPTER_START_NUMBER', 'EBOOK_CHAPTER_START_NAME',
 			'EBOOK_CHAPTER_START_WORD_COUNT', 'EBOOK_CHAPTER_SWITCH_SHOW_INFO', 'EBOOK_SWIPE_SIDE_CLICK_ENABLED',
@@ -413,7 +416,7 @@ export default {
 			'EBOOK_PROGRESS_BAR_OPACITY': 100, 'EBOOK_GESTURE': 'single', 'EBOOK_CHAPTER_SWITCH_HEIGHT': 80, 'EBOOK_CHAPTER_SWITCH_SENSITIVITY': 50,
 			'EBOOK_SWIPE_SENSITIVITY': 80, 'EBOOK_CHAPTER_SWITCH_STYLE': 'button', 'EBOOK_AUTO_READ_DISTANCE': 100, 'EBOOK_PREVENT_PARAGRAPH_SPLITTING': false,
 			'EBOOK_TIME_FORMAT': '24h', 'EBOOK_PROGRESS_SAVE_MODE': 'exit', 'EBOOK_PROGRESS_SAVE_INTERVAL': 10,
-			'EBOOK_ALWAYS_SHOW_TIME': false, 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 200, 'EBOOK_READ_MODE': 'scroll',
+			'EBOOK_ALWAYS_SHOW_TIME': false, 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 200, 'EBOOK_READ_MODE': 'scroll', 'EBOOK_READING_TIME_RECORDING': false,
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED': false, 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': false, 'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'topBottomClick',
 			'EBOOK_BOLD_ENABLED': true, 'EBOOK_DEFAULT_KEEP_SCREEN_ON': true, 'EBOOK_CHAPTER_START_EMPTY_LINES': false, 'EBOOK_CHAPTER_START_NUMBER': false, 'EBOOK_CHAPTER_START_NAME': false,
 			'EBOOK_CHAPTER_START_WORD_COUNT': false, 'EBOOK_CHAPTER_SWITCH_SHOW_INFO': false, 'EBOOK_SWIPE_SIDE_CLICK_ENABLED': false,
@@ -428,7 +431,7 @@ export default {
 			'EBOOK_CHAPTER_SWITCH_STYLE': 'chapterSwitchStyle', 'EBOOK_AUTO_READ_DISTANCE': 'autoReadDistance', 'EBOOK_PREVENT_PARAGRAPH_SPLITTING': 'preventParagraphSplitting',
 			'EBOOK_TIME_FORMAT': 'timeFormat', 'EBOOK_PROGRESS_SAVE_MODE': 'saveMode', 'EBOOK_PROGRESS_SAVE_INTERVAL': 'saveIntervalValue',
 			'EBOOK_ALWAYS_SHOW_TIME': 'alwaysShowTime', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 'alwaysShowTimeSensitivity',
-			'EBOOK_READ_MODE': 'readMode', 'EBOOK_TEXT_READER_MARQUEE_ENABLED': 'textReaderMarqueeEnabled', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': 'detailProgressMarqueeEnabled',
+			'EBOOK_READ_MODE': 'readMode', 'EBOOK_READING_TIME_RECORDING': 'readingTimeRecording', 'EBOOK_TEXT_READER_MARQUEE_ENABLED': 'textReaderMarqueeEnabled', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': 'detailProgressMarqueeEnabled',
 			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_DEFAULT_KEEP_SCREEN_ON': 'defaultKeepScreenOn', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
 			'EBOOK_CHAPTER_START_NUMBER': 'chapterStartNumber', 'EBOOK_CHAPTER_START_NAME': 'chapterStartName', 'EBOOK_CHAPTER_START_WORD_COUNT': 'chapterStartWordCount',
 			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo', 'EBOOK_SWIPE_SIDE_CLICK_ENABLED': 'swipeSideClickEnabled',
@@ -690,7 +693,7 @@ export default {
 	},
 
 	startReadingTimeRecording() {
-		if (!this.name || this.totalChapters === 0) return
+		if (!this.readingTimeRecording || !this.name || this.totalChapters === 0) return
 		try { readingTimeStorage.recordReadingStart(this.name) } catch (e) {}
 	},
 
