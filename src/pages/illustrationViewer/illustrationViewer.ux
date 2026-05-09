@@ -5,7 +5,6 @@
         </scroll>
         <img static src="/common/images/hd.png" class="header-bg" />
         <text class="title">{{title}}</text>
-        <img static src="/common/images/back.png" @click="back" class="back" />
     </div>
 </template>
 
@@ -41,14 +40,14 @@
     .viewer {
         position: absolute;
         left: 0px;
-        top: 142px;
+        top: 82px;
         width: 192px;
-        height: 348px;
+        height: 408px;
     }
 
     .image {
         width: 192px;
-        height: 348px;
+        min-height: 408px;
         object-fit: contain;
         background-color: #000000;
     }
@@ -58,27 +57,19 @@
         left: 0px;
         top: 0px;
         width: 192px;
-        height: 142px;
+        height: 82px;
     }
 
     .title {
         position: absolute;
         left: 20px;
-        top: 50px;
+        top: 36px;
         width: 152px;
-        line-height: 30px;
-        font-size: 16px;
+        line-height: 42px;
+        font-size: 24px;
         font-weight: bold;
         color: #ffffff;
         text-align: center;
         lines: 1;
-    }
-
-    .back {
-        position: absolute;
-        left: 4px;
-        top: 8px;
-        width: 42px;
-        height: 42px;
     }
 </style>
