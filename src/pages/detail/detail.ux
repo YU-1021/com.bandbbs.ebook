@@ -29,10 +29,24 @@
 					<text if="{{chapterStartWordCount && (!page1 || page1.offset !== 0)}}" style="width: 212px; text-align: center; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize * 0.8}}px; font-weight: bold; margin-bottom: 20px;">- 滑到顶部以加载上一段 -</text>
 				</div>
 				<div id="page1" style="flex-direction: column; width: 100%; flex-shrink: 0;">
-					<text style="width: 212px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page1.text}}</text>
+					<div for="{{page1.blocks}}" style="width: 212px; flex-direction: column;">
+						<text if="{{$item.type === 'text'}}" style="width: 212px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{$item.text}}</text>
+						<div if="{{$item.type === 'illustration'}}" style="width: 176px; margin-left: 18px; margin-top: 12px; margin-bottom: 12px; padding-top: 10px; padding-bottom: 10px; padding-left: 12px; padding-right: 12px; background-color: rgba(43, 104, 214, 0.24); border-width: 2px; border-color: rgba(127, 186, 255, 0.88); border-radius: 16px; flex-direction: column; align-items: center;" @click="openIllustration($item)">
+							<text static style="width: 80px; text-align: center; color: #9fd4ff; font-size: {{fontSize * 0.5}}px; font-weight: bold; line-height: {{lineHeight * 0.7}}px; background-color: rgba(159, 212, 255, 0.16); border-radius: 14px; padding-top: 3px; padding-bottom: 3px; margin-bottom: 8px;">插图</text>
+							<text style="width: 100%; text-align: center; color: #f2f7ff; font-size: {{fontSize * 0.82}}px; font-weight: bold; line-height: {{lineHeight}}px;">{{$item.text}}</text>
+							<text if="{{$item.altText}}" style="width: 100%; text-align: center; color: #b8c9e8; font-size: {{fontSize * 0.58}}px; line-height: {{lineHeight * 0.8}}px; margin-top: 6px;">{{$item.altText}}</text>
+						</div>
+					</div>
 				</div>
 				<div id="page2" if="{{page2}}" style="flex-direction: column; width: 100%; flex-shrink: 0;">
-					<text style="width: 212px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{page2.text}}</text>
+					<div for="{{page2.blocks}}" style="width: 212px; flex-direction: column;">
+						<text if="{{$item.type === 'text'}}" style="width: 212px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; line-height: {{lineHeight}}px;">{{$item.text}}</text>
+						<div if="{{$item.type === 'illustration'}}" style="width: 176px; margin-left: 18px; margin-top: 12px; margin-bottom: 12px; padding-top: 10px; padding-bottom: 10px; padding-left: 12px; padding-right: 12px; background-color: rgba(43, 104, 214, 0.24); border-width: 2px; border-color: rgba(127, 186, 255, 0.88); border-radius: 16px; flex-direction: column; align-items: center;" @click="openIllustration($item)">
+							<text static style="width: 80px; text-align: center; color: #9fd4ff; font-size: {{fontSize * 0.5}}px; font-weight: bold; line-height: {{lineHeight * 0.7}}px; background-color: rgba(159, 212, 255, 0.16); border-radius: 14px; padding-top: 3px; padding-bottom: 3px; margin-bottom: 8px;">插图</text>
+							<text style="width: 100%; text-align: center; color: #f2f7ff; font-size: {{fontSize * 0.82}}px; font-weight: bold; line-height: {{lineHeight}}px;">{{$item.text}}</text>
+							<text if="{{$item.altText}}" style="width: 100%; text-align: center; color: #b8c9e8; font-size: {{fontSize * 0.58}}px; line-height: {{lineHeight * 0.8}}px; margin-top: 6px;">{{$item.altText}}</text>
+						</div>
+					</div>
 				</div>
 				<div if="{{chapterSwitchStyle == 'button' && isAtChapterEnd && currentChapterIndexInAll < totalChapters - 1}}" style="width: 100%; height: {{chapterSwitchHeight}}px; justify-content: center; align-items: center; flex-direction: column;" @click="onNextChapterClick">
 					<text static style="color: #aaa; font-size: 20px; font-weight: bold;">下一章</text>
@@ -43,7 +57,12 @@
 
 		<div if="{{readMode === 'nostalgic'}}" style="position: absolute; width: 212px; height: 520px; top: 0px;" @click="onNostalgicClick" @touchstart="onNostalgicTouchStart" @touchmove="onNostalgicTouchMove" @touchend="onNostalgicTouchEnd" onlongpress="onTxtLongPress">
 			<div id="nostalgicContainer" style="position: absolute; width: 212px; height: {{pageHeigh}}px; top: {{nostalgicTop}}px; overflow: hidden; pointer-events: none;">
-				<text id="box1" style="lines: -1; width: 212px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
+				<text if="{{nostalgicPageType !== 'illustration'}}" id="box1" style="lines: -1; width: 212px; text-align: left; color: rgba(255,255,255,{{opacity/100}}); font-size: {{fontSize}}px; font-weight: {{boldEnabled ? 'bold' : 'normal'}}; position: absolute; top: {{nostalgicOffsetTopNormal}}px; line-height: {{lineHeight}}px; left: 0px; pointer-events: none;">{{nostalgicText}}</text>
+				<div if="{{nostalgicPageType === 'illustration'}}" style="width: 212px; height: {{pageHeigh}}px; align-items: center; justify-content: center; flex-direction: column; pointer-events: none;">
+					<text static style="width: 80px; text-align: center; color: #9fd4ff; font-size: {{fontSize * 0.5}}px; font-weight: bold; line-height: {{lineHeight * 0.7}}px; background-color: rgba(159, 212, 255, 0.16); border-radius: 14px; padding-top: 3px; padding-bottom: 3px; margin-bottom: 12px;">插图</text>
+					<img src="{{nostalgicIllustrationUri}}" style="width: 176px; height: {{pageHeigh - 80}}px; object-fit: contain; background-color: #000000;" />
+					<text if="{{nostalgicIllustrationAlt}}" style="width: 160px; text-align: center; color: #b8c9e8; font-size: {{fontSize * 0.56}}px; line-height: {{lineHeight * 0.8}}px; margin-top: 10px;">{{nostalgicIllustrationAlt}}</text>
+				</div>
 			</div>
 		</div>
 
@@ -76,6 +95,7 @@ import brightness from '@system.brightness'
 import app from '@system.app'
 import readingTimeStorage from '../../utils/readingTimeStorage.js'
 import battery from '@system.battery'
+import illustrationUtil from '../../utils/illustration.js'
 
 export default {
 	allSize: 0,
@@ -92,7 +112,7 @@ export default {
 		displayProgress: 0,
 		loadingNext: false,
 		loadingPrev: false,
-		page1: { text: "加载中...", offset: 0, length: 0 },
+		page1: { text: "加载中...", offset: 0, length: 0, blocks: [{ type: 'text', text: '加载中...' }] },
 		page2: null,
 		currentFileOffset: 0,
 		opacity: 100,
@@ -197,7 +217,14 @@ export default {
 		_lastCalcTime: 0,
 		loadingBookToken: 0,
 		nostalgicHeightCacheKey: '',
-		nostalgicCharsPerPage: 100
+		nostalgicCharsPerPage: 100,
+		showSettingProgressPercentOnly: false,
+		fontColorWithOpacity: 'rgba(255,255,255,1)',
+		nostalgicPageType: 'text',
+		nostalgicIllustrationUri: '',
+		nostalgicIllustrationAlt: '',
+		nostalgicPageEndOffset: 0,
+		nostalgicPageHistory: []
 	},
 	protected: {
 		name: '',
@@ -235,6 +262,83 @@ export default {
 	updatePageDisplay() {
 		this.currentPage = this.currentChapterIndexInAll + 1
 		this.totalPages = this.totalChapters
+	},
+
+	hexToRgba(hex, alpha) {
+		const color = (hex || '').replace('#', '')
+		if (color.length !== 6) return `rgba(255,255,255,${alpha})`
+		const r = parseInt(color.substring(0, 2), 16)
+		const g = parseInt(color.substring(2, 4), 16)
+		const b = parseInt(color.substring(4, 6), 16)
+		return `rgba(${r},${g},${b},${alpha})`
+	},
+
+	buildSegmentData(text, offset = 0, length = 0) {
+		const safeText = text || ''
+		return {
+			text: illustrationUtil.toDisplayText(safeText),
+			offset,
+			length,
+			blocks: illustrationUtil.parseIllustrationBlocks(safeText, this.name)
+		}
+	},
+
+	openIllustration(block) {
+		if (!block || !block.imageUri) return
+		router.push({
+			uri: 'pages/illustrationViewer',
+			params: {
+				pageTitle: block.altText || '插图',
+				pageImageUri: block.imageUri
+			}
+		})
+	},
+
+	clearNostalgicHistory() {
+		this.nostalgicPageHistory = []
+	},
+
+	captureNostalgicPageState() {
+		return {
+			type: this.nostalgicPageType,
+			text: this.nostalgicText,
+			offsetTop: this.nostalgicOffsetTopNormal,
+			savedOffset: this.nostalgicSavedOffset,
+			endOffset: this.nostalgicPageEndOffset,
+			height: this.nostalgicBoxAllHeightNormal,
+			imageUri: this.nostalgicIllustrationUri,
+			altText: this.nostalgicIllustrationAlt
+		}
+	},
+
+	applyNostalgicPage(page, readOffset, deferReset = false, afterApply = null) {
+		this.nostalgicSavedOffset = readOffset
+		this.nostalgicPageEndOffset = page.endOffset || readOffset
+		this.nostalgicPageType = page.type || 'text'
+		this.nostalgicText = page.text || ''
+		this.nostalgicIllustrationUri = page.imageUri || ''
+		this.nostalgicIllustrationAlt = page.altText || ''
+		this.nostalgicHeightCacheKey = ''
+
+		if (this.nostalgicPageType === 'illustration') {
+			this.nostalgicOffsetTopNormal = 0
+			this.nostalgicBoxAllHeightNormal = this.pageHeigh
+			this.wait = false
+			this.isChangingChapter = false
+			if (afterApply) afterApply()
+			this.updateNostalgicProgress()
+			return
+		}
+
+		this.getNostalgicBoxHeight('box1', (h) => {
+			this.nostalgicBoxAllHeightNormal = h
+			this.wait = false
+			this.isChangingChapter = false
+			if (!deferReset) {
+				this.resetNostalgicPageOffset()
+			}
+			if (afterApply) afterApply()
+		})
 	},
 
 	resetTransientFlags() {
@@ -570,7 +674,7 @@ export default {
 			if (token !== this.loadingBookToken) return
 			if (version === 'old') return await chapterManager.handleOldVersion(this.name)
 			if (version === 'none') {
-				this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
+				this.page1 = this.buildSegmentData("本书没有内容", 0, 0)
 				this.page2 = null
 				this.totalChapters = 0
 				this.updatePageDisplay()
@@ -586,7 +690,7 @@ export default {
 		if (token !== this.loadingBookToken) return
 
 		if (this.totalChapters === 0) {
-			this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
+			this.page1 = this.buildSegmentData("本书没有内容", 0, 0)
 			this.page2 = null
 			this.updatePageDisplay()
 			return
@@ -639,7 +743,7 @@ export default {
 			const available = await chapterManager.getAllAvailableChapters(this.name)
 			if (available.length > 0) chapterToLoadIndex = available[0].index
 			else {
-				this.page1 = { text: "本书没有内容", offset: 0, length: 0 }
+				this.page1 = this.buildSegmentData("本书没有内容", 0, 0)
 				this.page2 = null
 				return
 			}
@@ -689,7 +793,7 @@ export default {
 			return
 		}
 
-		this.page1 = { text: "", offset: 0, length: 0 }
+		this.page1 = this.buildSegmentData("", 0, 0)
 		this.page2 = null
 		this.isAtChapterStart = false
 		this.isAtChapterEnd = false
@@ -723,7 +827,7 @@ export default {
 	loadInitialSegments() {
 		this.wait = true
 		this.readFileText(this.currentFileOffset, (str, bytesRead) => {
-			this.page1 = { text: str, offset: this.currentFileOffset, length: bytesRead }
+			this.page1 = this.buildSegmentData(str, this.currentFileOffset, bytesRead)
 			this.loadNextSegmentNoScroll()
 			this.updateContentHeight()
 		})
@@ -738,7 +842,7 @@ export default {
 			return
 		}
 		this.readFileText(newOffset, (str, bytesRead) => {
-			this.page2 = str ? { text: str, offset: newOffset, length: bytesRead } : null
+			this.page2 = str ? this.buildSegmentData(str, newOffset, bytesRead) : null
 			this.restoreScrollPosition()
 			this.updateContentHeight()
 		})
@@ -904,7 +1008,13 @@ export default {
 							if (lastNewlinePos >= 0) bytesToUse = lastNewlinePos + 2
 						}
 
-						cb(self.encodeUtf16LEBuffer(buffer, bytesToUse), bytesToUse)
+						let str2 = self.encodeUtf16LEBuffer(buffer, bytesToUse)
+						const markerStart2 = str2.lastIndexOf('[[SINE_IMG|')
+						if (markerStart2 >= 0 && str2.indexOf(']]', markerStart2) === -1) {
+							str2 = str2.slice(0, markerStart2)
+							bytesToUse = str2.length * 2
+						}
+						cb(str2, bytesToUse)
 					} catch (e) { cb('', 0) }
 				},
 				fail: () => {
@@ -961,7 +1071,7 @@ export default {
 			this.loadingNext = false
 			if (str) {
 				setTimeout(() => {
-					this.shiftPagesForward({ text: str, offset: newOffset, length: bytesRead })
+					this.shiftPagesForward(this.buildSegmentData(str, newOffset, bytesRead))
 				}, 30)
 			} else {
 				this.wait = false
@@ -1015,7 +1125,7 @@ export default {
 		this.readFileText(newOffset, (str, bytesRead) => {
 			this.loadingPrev = false
 			if (str) {
-				const prevPageData = { text: str, offset: newOffset, length: bytesRead }
+				const prevPageData = this.buildSegmentData(str, newOffset, bytesRead)
 				const applyShift = (addHeight) => {
 					this.page2 = oldPage1
 					this.page1 = prevPageData
@@ -1132,7 +1242,7 @@ export default {
 				this.loadNostalgicChapter(offset > 0 ? 0 : -1)
 				this.isChangingChapter = false
 			} else {
-				this.page1 = { text: "加载中...", offset: 0, length: 0 }
+				this.page1 = this.buildSegmentData("加载中...", 0, 0)
 				this.page2 = null
 				if (offset > 0) {
 					this.loadInitialSegments()
@@ -1159,7 +1269,7 @@ export default {
 			if (this.page1) this.page1.text = null
 			if (this.page2) this.page2.text = null
 			this.page2 = null
-			this.page1 = { text: str, offset: readOffset, length: bytesRead }
+			this.page1 = this.buildSegmentData(str, readOffset, bytesRead)
 			this.isAtChapterStart = (readOffset === 0)
 
 			if ((readOffset + bytesRead) >= this.allSize) {
@@ -1183,7 +1293,7 @@ export default {
 		}
 		this.readFileText(newOffset, (str, bytesRead) => {
 			if (str) {
-				this.page2 = { text: str, offset: newOffset, length: bytesRead }
+				this.page2 = this.buildSegmentData(str, newOffset, bytesRead)
 				this.updateContentHeight()
 				if ((newOffset + bytesRead) >= this.allSize) {
 					if (callback) callback()
@@ -1346,6 +1456,7 @@ export default {
 		this.nostalgicBoxAllHeightNormal = 0
 		this.nostalgicBoxAllHeightPreview = 0
 		this.nostalgicHeightCacheKey = ''
+		this.clearNostalgicHistory()
 
 		if (offsetInChapter === -1) {
 			this.loadNostalgicEnd()
@@ -1363,14 +1474,8 @@ export default {
 					this.nostalgicOffsetTopNormal = this.savedScrollOffset
 				}
 			}
-			this.readNostalgicText(this.nostalgicSavedOffset, (str) => {
-				this.nostalgicText = str
-				this.getNostalgicBoxHeight('box1', (h) => {
-					this.nostalgicBoxAllHeightNormal = h
-					this.resetNostalgicPageOffset()
-					this.wait = false
-					this.isChangingChapter = false
-				})
+			this.readNostalgicText(this.nostalgicSavedOffset, (page) => {
+				this.applyNostalgicPage(page, this.nostalgicSavedOffset)
 			})
 		}
 	},
@@ -1379,15 +1484,12 @@ export default {
 		this.wait = true
 		const READ_LEN = this.txtSizePage * 2
 		const offset = Math.max(0, this.allSize - READ_LEN)
-		this.nostalgicSavedOffset = offset
-		this.readNostalgicText(offset, (str) => {
-			this.nostalgicText = str
-			this.getNostalgicBoxHeight('box1', (h) => {
-				this.nostalgicBoxAllHeightNormal = h
-				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0
-				this.resetNostalgicPageOffset()
-				this.wait = false
-				this.isChangingChapter = false
+		this.readNostalgicText(offset, (page) => {
+			this.applyNostalgicPage(page, offset, true, () => {
+				if (this.nostalgicPageType !== 'illustration') {
+					this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0
+					this.resetNostalgicPageOffset()
+				}
 			})
 		})
 	},
@@ -1395,7 +1497,7 @@ export default {
 	readNostalgicText(readOffset, cb) {
 		const READ_LEN = this.txtSizePage * 2
 		let length = READ_LEN
-		if (readOffset >= this.allSize) { cb(''); return }
+		if (readOffset >= this.allSize) { cb({ type: 'text', text: '', endOffset: readOffset }); return }
 		if (readOffset < 0) { length += readOffset; readOffset = 0 }
 		const maxLength = this.allSize - readOffset
 		if (length > maxLength) length = maxLength
@@ -1403,7 +1505,10 @@ export default {
 		file.readArrayBuffer({
 			uri: this.cPath, position: readOffset, length: length,
 			success: (data) => {
-				if (!data.buffer || data.buffer.byteLength === 0) { cb(''); return }
+				if (!data.buffer || data.buffer.byteLength === 0) {
+					cb({ type: 'text', text: '', endOffset: readOffset })
+					return
+				}
 				try {
 					const buffer = new Uint8Array(data.buffer)
 					let bytesToUse = buffer.length
@@ -1423,7 +1528,11 @@ export default {
 						}
 					}
 
-					const str = this.encodeUtf16LEBuffer(buffer, bytesToUse)
+					let str = this.encodeUtf16LEBuffer(buffer, bytesToUse)
+					const markerStart = str.lastIndexOf('[[SINE_IMG|')
+					if (markerStart >= 0 && str.indexOf(']]', markerStart) === -1) {
+						str = str.slice(0, markerStart)
+					}
 
 					let prefix = ""
 					if (readOffset === 0) {
@@ -1433,12 +1542,36 @@ export default {
 						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`
 						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n"
 					}
-					cb(prefix + str)
-				} catch (e) {
-					cb('')
-				}
+					const firstIllustration = illustrationUtil.findFirstIllustration(str, this.name)
+					if (firstIllustration) {
+						const textBeforeIllustration = prefix + str.slice(0, firstIllustration.startIndex)
+						const hasVisibleTextBeforeIllustration =
+							textBeforeIllustration.replace(/\s+/g, '').length > 0
+						if (hasVisibleTextBeforeIllustration) {
+							cb({
+								type: 'text',
+								text: textBeforeIllustration,
+								endOffset: readOffset + firstIllustration.startIndex * 2
+							})
+						} else {
+							cb({
+								type: 'illustration',
+								text: '',
+								imageUri: firstIllustration.imageUri,
+								altText: firstIllustration.altText || '插图',
+								endOffset: readOffset + firstIllustration.rawLength * 2
+							})
+						}
+						return
+					}
+					cb({
+						type: 'text',
+						text: prefix + str,
+						endOffset: readOffset + bytesToUse
+					})
+				} catch (e) { cb({ type: 'text', text: '', endOffset: readOffset }); }
 			},
-			fail: () => { cb('') }
+			fail: () => { cb({ type: 'text', text: '', endOffset: readOffset }); }
 		})
 	},
 
@@ -1479,6 +1612,13 @@ export default {
 	},
 
 	resetNostalgicPageOffset() {
+		if (this.nostalgicPageType === 'illustration') {
+			this.nostalgicOffsetTopNormal = 0
+			this.nostalgicBoxAllHeightNormal = this.pageHeigh
+			this.updateNostalgicProgress()
+			return
+		}
+
 		const READ_LEN = this.txtSizePage * 2
 		this.nostalgicPreViewShowFlag = false
 
@@ -1498,18 +1638,17 @@ export default {
 			const prevOffset = Math.max(0, this.nostalgicSavedOffset - READ_LEN)
 			const carryOffset = this.nostalgicOffsetTopNormal
 			this.wait = true
-			this.readNostalgicText(prevOffset, (str) => {
-				this.nostalgicText = str
-				this.nostalgicSavedOffset = prevOffset
-				this.getNostalgicBoxHeight('box1', (h) => {
-					this.nostalgicBoxAllHeightNormal = h
-					this.nostalgicOffsetTopNormal = carryOffset - this.nostalgicBoxAllHeightNormal
-					if (prevOffset <= 0 && this.nostalgicOffsetTopNormal > 0) {
-						this.nostalgicOffsetTopNormal = 0
-						this.nostalgicSavedOffset = 0
+			this.readNostalgicText(prevOffset, (page) => {
+				this.applyNostalgicPage(page, prevOffset, true, () => {
+					if (this.nostalgicPageType !== 'illustration') {
+						this.nostalgicOffsetTopNormal = carryOffset - this.nostalgicBoxAllHeightNormal
+						if (prevOffset <= 0 && this.nostalgicOffsetTopNormal > 0) {
+							this.nostalgicOffsetTopNormal = 0
+							this.nostalgicSavedOffset = 0
+						}
+						this.wait = false
+						this.resetNostalgicPageOffset()
 					}
-					this.wait = false
-					this.resetNostalgicPageOffset()
 				})
 			})
 			return
@@ -1517,14 +1656,14 @@ export default {
 
 		const remain = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal
 		if (remain > 0) {
-			if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
+			if (this.nostalgicPageEndOffset >= this.allSize) {
 				this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.nostalgicBoxAllHeightNormal - this.pageHeigh) * -1 : 0
 			}
 			this.updateNostalgicProgress()
 			return
 		}
 
-		if (this.nostalgicSavedOffset + READ_LEN >= this.allSize) {
+		if (this.nostalgicPageEndOffset >= this.allSize) {
 			this.nostalgicOffsetTopNormal -= remain
 			if (this.currentChapterIndexInAll < this.totalChapters - 1) {
 				this.changeChapter(1)
@@ -1536,17 +1675,17 @@ export default {
 			return
 		}
 
-		const nextOffset = this.nostalgicSavedOffset + READ_LEN
+		const nextOffset = this.nostalgicPageEndOffset || (this.nostalgicSavedOffset + READ_LEN)
 		const carryOffset = remain <= -this.pageHeigh ? (remain + this.pageHeigh) : 0
 		this.wait = true
-		this.readNostalgicText(nextOffset, (str) => {
-			this.nostalgicText = str
-			this.nostalgicSavedOffset = nextOffset
-			this.getNostalgicBoxHeight('box1', (h) => {
-				this.nostalgicBoxAllHeightNormal = h
-				this.nostalgicOffsetTopNormal = carryOffset
-				this.wait = false
-				this.resetNostalgicPageOffset()
+		this.nostalgicPageHistory.push(this.captureNostalgicPageState())
+		this.readNostalgicText(nextOffset, (page) => {
+			this.applyNostalgicPage(page, nextOffset, true, () => {
+				if (this.nostalgicPageType !== 'illustration') {
+					this.nostalgicOffsetTopNormal = carryOffset
+					this.wait = false
+					this.resetNostalgicPageOffset()
+				}
 			})
 		})
 	},
@@ -1554,6 +1693,20 @@ export default {
 	updateNostalgicProgress() {
 		const READ_LEN = this.txtSizePage * 2
 		this.isAtChapterStart = (this.nostalgicSavedOffset === 0 && this.nostalgicOffsetTopNormal >= 0)
+		if (this.nostalgicPageType === 'illustration') {
+			this.isAtChapterEnd = this.nostalgicPageEndOffset >= this.allSize
+			this.isNearTopForHd = this.isAtChapterStart
+			if (this.allSize > 0) {
+				const progressOffset = Math.min(this.allSize, Math.max(this.nostalgicSavedOffset, Math.floor((this.nostalgicSavedOffset + this.nostalgicPageEndOffset) / 2)))
+				let newProg = Math.min(100, Math.max(0, (progressOffset / this.allSize) * 100))
+				newProg = Math.round(newProg).toString()
+				if (this.displayProgress !== newProg) this.displayProgress = newProg
+			} else if (this.displayProgress !== '0') {
+				this.displayProgress = '0'
+			}
+			this.saveData(true)
+			return
+		}
 		const preOffset = this.nostalgicBoxAllHeightNormal + this.nostalgicOffsetTopNormal
 		this.isAtChapterEnd = (this.nostalgicSavedOffset + READ_LEN >= this.allSize && preOffset <= 0)
 		this.isNearTopForHd = this.isAtChapterStart
@@ -1604,6 +1757,68 @@ export default {
 
 	turnNostalgicPage(direction) {
 		if (this.wait) return
+		if (this.nostalgicPageType === 'illustration') {
+			if (direction > 0) {
+				if (this.nostalgicPageEndOffset >= this.allSize) {
+					if (this.currentChapterIndexInAll < this.totalChapters - 1) {
+						this.changeChapter(1)
+					} else {
+						prompt.showToast({ message: '已是最后一章' })
+						this.isAtChapterEnd = true
+						this.updateNostalgicProgress()
+					}
+					return
+				}
+				const nextOffset = this.nostalgicPageEndOffset
+				this.wait = true
+				this.nostalgicPageHistory.push(this.captureNostalgicPageState())
+				this.readNostalgicText(nextOffset, (page) => {
+					this.applyNostalgicPage(page, nextOffset)
+				})
+				return
+			}
+
+			const previousPage = this.nostalgicPageHistory.pop()
+			if (previousPage) {
+				this.nostalgicPageType = previousPage.type
+				this.nostalgicText = previousPage.text
+				this.nostalgicOffsetTopNormal = previousPage.offsetTop
+				this.nostalgicSavedOffset = previousPage.savedOffset
+				this.nostalgicPageEndOffset = previousPage.endOffset
+				this.nostalgicBoxAllHeightNormal = previousPage.height
+				this.nostalgicIllustrationUri = previousPage.imageUri
+				this.nostalgicIllustrationAlt = previousPage.altText
+				this.wait = false
+				this.isChangingChapter = false
+				this.updateNostalgicProgress()
+				return
+			}
+
+			if (this.nostalgicSavedOffset <= 0) {
+				if (this.currentChapterIndexInAll > 0) {
+					this.changeChapter(-1)
+				} else {
+					prompt.showToast({ message: '已是第一章' })
+					this.isAtChapterStart = true
+					this.updateNostalgicProgress()
+				}
+				return
+			}
+
+			const fallbackOffset = Math.max(0, this.nostalgicSavedOffset - this.txtSizePage * 2)
+			this.wait = true
+			this.readNostalgicText(fallbackOffset, (page) => {
+				this.applyNostalgicPage(page, fallbackOffset, true, () => {
+					if (this.nostalgicPageType !== 'illustration') {
+						this.nostalgicOffsetTopNormal = this.nostalgicBoxAllHeightNormal > this.pageHeigh ? (this.pageHeigh - this.nostalgicBoxAllHeightNormal) : 0
+						this.wait = false
+						this.resetNostalgicPageOffset()
+					}
+				})
+			})
+			return
+		}
+
 		if (direction > 0) {
 			this.nostalgicOffsetTopNormal -= this.pageHeigh
 			this.resetNostalgicPageOffset()
