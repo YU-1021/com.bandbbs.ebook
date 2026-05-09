@@ -22,6 +22,7 @@ export default class interconnfile {
     isCoverOnly = false;
     syncedChapterIndices = new Set();
     currentBookCoverUri = null;
+    currentIllustrationUri = null;
     pendingChapterMetas = [];
     BATCH_WRITE_SIZE = 15;
     CHAPTERS_PER_FILE = 100;
@@ -49,6 +50,9 @@ export default class interconnfile {
                         this.isCoverOnly = true;
                         await this.startCoverTransfer(payload);
                         break;
+                    case "start_illustration_transfer":
+                        await this.startIllustrationTransfer(payload);
+                        break;
                     case "d":
                         await this.saveChapter(payload);
                         break;
@@ -69,6 +73,12 @@ export default class interconnfile {
                         break;
                     case "cover_transfer_complete":
                         await this.completeCoverTransfer();
+                        break;
+                    case "illustration_chunk":
+                        await this.saveIllustrationChunk(payload);
+                        break;
+                    case "illustration_transfer_complete":
+                        await this.completeIllustrationTransfer(payload);
                         break;
                     case "update_book_info":
                         await this.updateBookInfo(payload);
@@ -119,6 +129,7 @@ export default class interconnfile {
         this.lindexContent = null;
         this.pendingChapterMetas = [];
         this.currentBookCoverUri = null;
+        this.currentIllustrationUri = null;
         this.currentChapterMeta = null;
         this.currentSavingChapterIndex = -1;
         this.chapterWriteState.clear();
@@ -407,6 +418,56 @@ export default class interconnfile {
             this.callback({ msg: "success" });
             this.resetState();
         }
+        global.runGC();
+    }
+
+    async startIllustrationTransfer({ filename, relativePath }) {
+        this.currentBookName = filename;
+        this.currentBookDir = this.generateDirName(filename);
+        await this.ensureDir(this.baseUri);
+        const bookUri = this.baseUri + this.currentBookDir;
+        await this.ensureDir(bookUri);
+
+        const normalizedPath = (relativePath || '').replace(/^\/+/, '');
+        const pathParts = normalizedPath.split('/').filter(Boolean);
+        if (pathParts.length === 0) {
+            throw new Error('插图路径无效');
+        }
+
+        let currentDir = bookUri;
+        for (let i = 0; i < pathParts.length - 1; i++) {
+            currentDir = `${currentDir}/${pathParts[i]}`;
+            await this.ensureDir(currentDir);
+        }
+
+        this.currentIllustrationUri = `${bookUri}/${normalizedPath}`;
+        try {
+            await runAsyncFunc(file.delete, { uri: this.currentIllustrationUri });
+        } catch (e) {}
+
+        this.send({ type: "illustration_ready" });
+    }
+
+    async saveIllustrationChunk({ chunkIndex, data }) {
+        if (!this.currentIllustrationUri) {
+            throw new Error('插图接收状态缺失');
+        }
+
+        const illustrationBytes = this.base64ToArrayBuffer(data);
+        if (illustrationBytes.byteLength > 0) {
+            await runAsyncFunc(file.writeArrayBuffer, {
+                uri: this.currentIllustrationUri,
+                buffer: new Uint8Array(illustrationBytes),
+                append: chunkIndex > 0,
+            });
+        }
+
+        this.send({ type: "illustration_chunk_received" });
+    }
+
+    async completeIllustrationTransfer() {
+        this.currentIllustrationUri = null;
+        this.send({ type: "illustration_saved" });
         global.runGC();
     }
 
