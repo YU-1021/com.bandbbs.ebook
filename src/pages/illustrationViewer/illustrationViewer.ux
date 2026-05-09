@@ -1,0 +1,82 @@
+<template>
+    <div class="page">
+        <scroll scroll-y="{{true}}" class="viewer">
+            <img src="{{imageUri}}" class="image" />
+        </scroll>
+        <img static src="/common/images/hd.png" class="header-bg" />
+        <text class="title">{{title}}</text>
+        <img static src="/common/images/back.png" @click="back" class="back" />
+    </div>
+</template>
+
+<script>
+    import router from '@system.router';
+
+    export default {
+        private: {
+            title: '插图',
+            imageUri: ''
+        },
+
+        onInit() {
+            this.title = this.pageTitle || '插图';
+            this.imageUri = this.pageImageUri || '';
+        },
+
+        back() {
+            router.back();
+        }
+    }
+</script>
+
+<style>
+    .page {
+        width: 432px;
+        height: 514px;
+        background-color: #000000;
+    }
+
+    .viewer {
+        position: absolute;
+        left: 0px;
+        top: 102px;
+        width: 432px;
+        height: 412px;
+    }
+
+    .image {
+        width: 432px;
+        height: 412px;
+        object-fit: contain;
+        background-color: #000000;
+    }
+
+    .header-bg {
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        width: 432px;
+        height: 102px;
+    }
+
+    .title {
+        position: absolute;
+        left: 120px;
+        top: 34px;
+        width: 192px;
+        line-height: 36px;
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffffff;
+        text-align: center;
+        lines: 1;
+    }
+
+    .back {
+        position: absolute;
+        left: 38px;
+        top: 24px;
+        width: 82px;
+        height: 82px;
+    }
+</style>
