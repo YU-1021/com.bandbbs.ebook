@@ -124,6 +124,9 @@
       "pages/textReader": {
         "component": "textReader"
       },
+      "pages/illustrationViewer": {
+        "component": "illustrationViewer"
+      },
       "pages/chapterSwitchSetting": {
         "component": "chapterSwitchSetting"
       },
