@@ -1,0 +1,55 @@
+<template>
+    <div class="page">
+        <scroll scroll-y="{{true}}" class="viewer">
+            <img src="{{imageUri}}" class="image" />
+        </scroll>
+        <marquee if="{{title.length > 8}}" text-offset="25" scrollamount="40" class="header-title">{{title}}</marquee>
+        <text else class="header-title">{{title}}</text>
+        <img static src="/common/images/more2.png" @click="back()" class="header-more" />
+    </div>
+</template>
+
+<script>
+    import router from '@system.router';
+
+    export default {
+        private: {
+            title: '插图',
+            imageUri: ''
+        },
+
+        onInit() {
+            this.title = this.pageTitle || '插图';
+            this.imageUri = this.pageImageUri || '';
+        },
+
+        back() {
+            router.back();
+        }
+    }
+</script>
+
+<style>
+    @import '../../common/style.css';
+
+    .page {
+        width: 480px;
+        height: 480px;
+        background-color: #000000;
+    }
+
+    .viewer {
+        position: absolute;
+        left: 70px;
+        top: 70px;
+        width: 340px;
+        height: 340px;
+    }
+
+    .image {
+        width: 340px;
+        min-height: 340px;
+        object-fit: contain;
+        background-color: #000000;
+    }
+</style>
