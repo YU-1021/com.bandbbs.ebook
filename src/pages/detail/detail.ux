@@ -169,6 +169,7 @@ export default {
 		isNearTopForHd: false,
 		lastTxtSizePage: 400,
 		lastFontSize: 24,
+		lastIllustrationEnabled: true,
 		readMode: 'scroll',
 		nostalgicTop: 10,
 		nostalgicOffsetTopNormal: 0,
@@ -183,6 +184,7 @@ export default {
 		textReaderMarqueeEnabled: false,
 		detailProgressMarqueeEnabled: false,
 		boldEnabled: true,
+		illustrationEnabled: true,
 		chapterStartEmptyLines: false,
 		chapterStartNumber: false,
 		chapterStartName: false,
@@ -260,10 +262,10 @@ export default {
 	buildSegmentData(text, offset = 0, length = 0) {
 		const safeText = text || ''
 		return {
-			text: illustrationUtil.toDisplayText(safeText),
+			text: illustrationUtil.toDisplayText(safeText, this.illustrationEnabled),
 			offset,
 			length,
-			blocks: illustrationUtil.parseIllustrationBlocks(safeText, this.name)
+			blocks: illustrationUtil.parseIllustrationBlocks(safeText, this.name, this.illustrationEnabled)
 		}
 	},
 
@@ -411,15 +413,19 @@ export default {
 		global.runGC()
 	},
 
-	onShow() {
+	async onShow() {
 		if (!this.timer) {
 			this.updateTime()
 			this.timer = setInterval(() => { this.updateTime() }, 10000)
 		}
 
-		this.loadSettings()
+		await this.loadSettings()
 
-		const settingsChanged = this.isInitialized && (this.lastTxtSizePage !== this.txtSizePage || this.lastFontSize !== this.fontSize)
+		const settingsChanged = this.isInitialized && (
+			this.lastTxtSizePage !== this.txtSizePage ||
+			this.lastFontSize !== this.fontSize ||
+			this.lastIllustrationEnabled !== this.illustrationEnabled
+		)
 
 		if (typeof globalThis.isKeepScreenOn !== 'undefined') {
 			const newKeepScreenOn = !!globalThis.isKeepScreenOn
@@ -454,6 +460,7 @@ export default {
 			this.isInitialized = true
 			this.lastTxtSizePage = this.txtSizePage
 			this.lastFontSize = this.fontSize
+			this.lastIllustrationEnabled = this.illustrationEnabled
 		}
 
 		if (isChapterJump) this.showSetting = false
@@ -481,7 +488,7 @@ export default {
 			'EBOOK_TIME_FORMAT', 'EBOOK_PROGRESS_SAVE_MODE', 'EBOOK_PROGRESS_SAVE_INTERVAL',
 			'EBOOK_ALWAYS_SHOW_TIME', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY', 'EBOOK_READ_MODE', 'EBOOK_READING_TIME_RECORDING',
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED', 'EBOOK_NOSTALGIC_PAGE_TURN_MODE',
-			'EBOOK_BOLD_ENABLED', 'EBOOK_CHAPTER_START_EMPTY_LINES', 'EBOOK_CHAPTER_START_NUMBER', 'EBOOK_CHAPTER_START_NAME',
+			'EBOOK_BOLD_ENABLED', 'EBOOK_ILLUSTRATION_ENABLED', 'EBOOK_CHAPTER_START_EMPTY_LINES', 'EBOOK_CHAPTER_START_NUMBER', 'EBOOK_CHAPTER_START_NAME',
 			'EBOOK_CHAPTER_START_WORD_COUNT', 'EBOOK_CHAPTER_SWITCH_SHOW_INFO', 'EBOOK_SHORTCUT_LONG_PRESS_SCREEN_ON',
 			'EBOOK_SHORTCUT_DOUBLE_CLICK_BOOKMARK', 'EBOOK_SHORTCUT_TRIPLE_CLICK_BOOKMARK_MANAGER'
 		]
@@ -493,7 +500,7 @@ export default {
 			'EBOOK_TIME_FORMAT': '24h', 'EBOOK_PROGRESS_SAVE_MODE': 'exit', 'EBOOK_PROGRESS_SAVE_INTERVAL': 10,
 			'EBOOK_ALWAYS_SHOW_TIME': false, 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 200, 'EBOOK_READ_MODE': 'scroll', 'EBOOK_READING_TIME_RECORDING': false,
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED': false, 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': false, 'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'topBottomClick',
-			'EBOOK_BOLD_ENABLED': true, 'EBOOK_CHAPTER_START_EMPTY_LINES': false, 'EBOOK_CHAPTER_START_NUMBER': false, 'EBOOK_CHAPTER_START_NAME': false,
+			'EBOOK_BOLD_ENABLED': true, 'EBOOK_ILLUSTRATION_ENABLED': true, 'EBOOK_CHAPTER_START_EMPTY_LINES': false, 'EBOOK_CHAPTER_START_NUMBER': false, 'EBOOK_CHAPTER_START_NAME': false,
 			'EBOOK_CHAPTER_START_WORD_COUNT': false, 'EBOOK_CHAPTER_SWITCH_SHOW_INFO': false, 'EBOOK_SHORTCUT_LONG_PRESS_SCREEN_ON': false,
 			'EBOOK_SHORTCUT_DOUBLE_CLICK_BOOKMARK': false, 'EBOOK_SHORTCUT_TRIPLE_CLICK_BOOKMARK_MANAGER': false
 		}
@@ -506,7 +513,7 @@ export default {
 			'EBOOK_TIME_FORMAT': 'timeFormat', 'EBOOK_PROGRESS_SAVE_MODE': 'saveMode', 'EBOOK_PROGRESS_SAVE_INTERVAL': 'saveIntervalValue',
 			'EBOOK_ALWAYS_SHOW_TIME': 'alwaysShowTime', 'EBOOK_ALWAYS_SHOW_TIME_SENSITIVITY': 'alwaysShowTimeSensitivity', 'EBOOK_READ_MODE': 'readMode', 'EBOOK_READING_TIME_RECORDING': 'readingTimeRecording',
 			'EBOOK_TEXT_READER_MARQUEE_ENABLED': 'textReaderMarqueeEnabled', 'EBOOK_DETAIL_PROGRESS_MARQUEE_ENABLED': 'detailProgressMarqueeEnabled',
-			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
+			'EBOOK_NOSTALGIC_PAGE_TURN_MODE': 'nostalgicPageTurnMode', 'EBOOK_BOLD_ENABLED': 'boldEnabled', 'EBOOK_ILLUSTRATION_ENABLED': 'illustrationEnabled', 'EBOOK_CHAPTER_START_EMPTY_LINES': 'chapterStartEmptyLines',
 			'EBOOK_CHAPTER_START_NUMBER': 'chapterStartNumber', 'EBOOK_CHAPTER_START_NAME': 'chapterStartName', 'EBOOK_CHAPTER_START_WORD_COUNT': 'chapterStartWordCount',
 			'EBOOK_CHAPTER_SWITCH_SHOW_INFO': 'chapterSwitchShowInfo', 'EBOOK_SHORTCUT_LONG_PRESS_SCREEN_ON': 'shortcutLongPressScreenOn',
 			'EBOOK_SHORTCUT_DOUBLE_CLICK_BOOKMARK': 'shortcutDoubleClickBookmark', 'EBOOK_SHORTCUT_TRIPLE_CLICK_BOOKMARK_MANAGER': 'shortcutTripleClickBookmarkManager'
@@ -1521,7 +1528,10 @@ export default {
 						if (this.chapterStartWordCount) prefix += `本章 ${this.currentChapterWordCount} 字\n`
 						if (this.chapterStartName || this.chapterStartWordCount || this.chapterStartNumber) prefix += "\n"
 					}
-					const firstIllustration = illustrationUtil.findFirstIllustration(str, this.name)
+					if (!this.illustrationEnabled) {
+						str = illustrationUtil.stripIllustrationMarkers(str)
+					}
+					const firstIllustration = illustrationUtil.findFirstIllustration(str, this.name, this.illustrationEnabled)
 					if (firstIllustration) {
 						const textBeforeIllustration = prefix + str.slice(0, firstIllustration.startIndex)
 						const hasVisibleTextBeforeIllustration =
