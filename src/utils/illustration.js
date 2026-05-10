@@ -17,9 +17,20 @@ function appendTextBlocks(target, text) {
         .forEach(line => target.push({ type: 'text', text: line }));
 }
 
-function parseIllustrationBlocks(content, bookDirName) {
+function stripIllustrationMarkers(content) {
+    if (!content) return '';
+    return content
+        .replace(MARKER_REGEX, '\n\n')
+        .replace(/\n{3,}/g, '\n\n');
+}
+
+function parseIllustrationBlocks(content, bookDirName, showIllustration = true) {
     const blocks = [];
     if (!content) return blocks;
+    if (!showIllustration) {
+        appendTextBlocks(blocks, stripIllustrationMarkers(content));
+        return blocks;
+    }
 
     let lastIndex = 0;
     content.replace(MARKER_REGEX, (match, encodedPath, encodedAlt, offset) => {
@@ -50,8 +61,9 @@ function parseIllustrationBlocks(content, bookDirName) {
     return blocks;
 }
 
-function toDisplayText(content) {
+function toDisplayText(content, showIllustration = true) {
     if (!content) return '';
+    if (!showIllustration) return stripIllustrationMarkers(content);
     return content
         .replace(MARKER_REGEX, `\n\n${PROMPT_TEXT}\n\n`)
         .replace(/\n{3,}/g, '\n\n');
@@ -63,8 +75,8 @@ function extractIllustrationUris(content, bookDirName) {
         .map(block => block.imageUri);
 }
 
-function findFirstIllustration(content, bookDirName) {
-    if (!content) return null;
+function findFirstIllustration(content, bookDirName, showIllustration = true) {
+    if (!content || !showIllustration) return null;
     const regex = new RegExp(MARKER_REGEX);
     const match = regex.exec(content);
     if (!match) return null;
@@ -85,6 +97,7 @@ function findFirstIllustration(content, bookDirName) {
 
 export default {
     PROMPT_TEXT,
+    stripIllustrationMarkers,
     parseIllustrationBlocks,
     toDisplayText,
     extractIllustrationUris,
