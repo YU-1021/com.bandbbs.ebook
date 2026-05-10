@@ -400,6 +400,18 @@ export default {
 		return threshold
 	},
 
+	getEffectiveContentHeightForChapterEnd() {
+		let effectiveHeight = this.contentHeight || 0
+		if (
+			this.chapterSwitchStyle === 'button' &&
+			this.isAtChapterEnd &&
+			this.currentChapterIndexInAll < this.totalChapters - 1
+		) {
+			effectiveHeight = Math.max(0, effectiveHeight - this.chapterSwitchHeight)
+		}
+		return effectiveHeight
+	},
+
 	updateScrollDerivedFlags() {
 		const isStart = this.currentFileOffset === 0 && this.currentScrollTop < 10
 		if (this.isAtChapterStart !== isStart) this.isAtChapterStart = isStart
@@ -409,12 +421,13 @@ export default {
 
 		const lastSeg = this.page2 || this.page1
 		const isLastSeg = lastSeg && (lastSeg.offset + lastSeg.length) >= this.allSize
-		const isShortChapterAtEnd = isLastSeg && this.contentHeight > 0 && this.contentHeight <= this.scrollHeight
+		const effectiveContentHeight = this.getEffectiveContentHeightForChapterEnd()
+		const isShortChapterAtEnd = isLastSeg && effectiveContentHeight > 0 && effectiveContentHeight <= this.scrollHeight
 		if (isShortChapterAtEnd) {
 			if (!this.isAtChapterEnd) this.isAtChapterEnd = true
-		} else if (this.contentHeight > this.scrollHeight && isLastSeg) {
+		} else if (effectiveContentHeight > this.scrollHeight && isLastSeg) {
 			const threshold = this.getChapterEndTriggerThreshold()
-			const isNearBottom = this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)
+			const isNearBottom = this.currentScrollTop >= (effectiveContentHeight - this.scrollHeight - threshold)
 			if (this.isAtChapterEnd !== isNearBottom) this.isAtChapterEnd = isNearBottom
 		} else if (this.isAtChapterEnd) {
 			this.isAtChapterEnd = false
@@ -978,12 +991,13 @@ export default {
 
 		let lastSeg = this.page2 || this.page1
 		const isLastSeg = lastSeg && (lastSeg.offset + lastSeg.length) >= this.allSize
-		const isShortChapterAtEnd = isLastSeg && this.contentHeight > 0 && this.contentHeight <= this.scrollHeight
+		const effectiveContentHeight = this.getEffectiveContentHeightForChapterEnd()
+		const isShortChapterAtEnd = isLastSeg && effectiveContentHeight > 0 && effectiveContentHeight <= this.scrollHeight
 		if (isShortChapterAtEnd) {
 			if (!this.isAtChapterEnd) this.isAtChapterEnd = true
-		} else if (this.contentHeight > this.scrollHeight && isLastSeg) {
+		} else if (effectiveContentHeight > this.scrollHeight && isLastSeg) {
 			const threshold = this.getChapterEndTriggerThreshold()
-			const endTriggerTop = this.contentHeight - this.scrollHeight - threshold
+			const endTriggerTop = effectiveContentHeight - this.scrollHeight - threshold
 			const isNearBottom = this.currentScrollTop >= endTriggerTop
 			if (this.isAtChapterEnd !== isNearBottom) this.isAtChapterEnd = isNearBottom
 		} else if (this.isAtChapterEnd) {
@@ -1016,8 +1030,11 @@ export default {
 		}
 		this.readFileText(newOffset, (str, bytesRead) => {
 			this.loadingNext = false
-			if (str) this.shiftPagesForward({ text: str, offset: newOffset, length: bytesRead })
-			else {
+			if (str) {
+				setTimeout(() => {
+					this.shiftPagesForward(this.buildSegmentData(str, newOffset, bytesRead))
+				}, 30)
+			} else {
 				this.wait = false
 				this.calculateDisplayProgress()
 			}
@@ -1070,7 +1087,7 @@ export default {
 		this.readFileText(newOffset, (str, bytesRead) => {
 			this.loadingPrev = false
 			if (str) {
-				const prevPageData = { text: str, offset: newOffset, length: bytesRead }
+				const prevPageData = this.buildSegmentData(str, newOffset, bytesRead)
 				const applyShift = (addHeight) => {
 					this.page2 = oldPage1
 					this.page1 = prevPageData
