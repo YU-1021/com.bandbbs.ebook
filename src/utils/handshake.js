@@ -2,8 +2,8 @@ import interconn from './interconn.js';
 import { versionCode } from "../manifest.json";
 import router from '@system.router';
 
-const MIN_PHONE_VERSION = 126420;
-const MIN_PHONE_VERSION_NAME = "V26.4.2";
+const MIN_PHONE_VERSION = 126430;
+const MIN_PHONE_VERSION_NAME = "V26.4.3";
 const type = "__hs__"
 const TIMEOUT = 15000;
 
