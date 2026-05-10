@@ -17,7 +17,7 @@
 				<text else class="item-value">{{author}}</text>
 			</list-item>
 
-			<list-item class="item" type="info" style="height: 280px; flex-direction: column;">
+			<list-item class="item" type="info" style="height: 315px; flex-direction: column;">
 				<text class="item-title" static>占用空间</text>
 				<text class="item-value" style="width: auto;">{{totalStorage}}</text>
 				<div static style="width: 100%; height: 1px; background-color: rgba(255,255,255,0.2); margin: 8px 0px;"></div>
@@ -36,6 +36,10 @@
 				<div style="display: flex; flex-direction: row; justify-content: space-between; width: 100%;">
 					<text class="item-title" style="font-size: 24px;" static>书签索引占用</text>
 					<text class="item-value" style="font-size: 24px; width: auto;">{{bookmarkIndexStorage}}</text>
+				</div>
+				<div style="display: flex; flex-direction: row; justify-content: space-between; width: 100%;">
+					<text class="item-title" style="font-size: 24px;" static>插图占用</text>
+					<text class="item-value" style="font-size: 24px; width: auto;">{{illustrationStorage}}</text>
 				</div>
 			</list-item>
 
@@ -97,6 +101,7 @@ export default {
 		coverStorage: '加载中...',
 		indexStorage: '加载中...',
 		bookmarkIndexStorage: '加载中...',
+		illustrationStorage: '加载中...',
 		wordCount: '加载中...',
 		nowTime: '00:00',
 		timer: null,
@@ -251,6 +256,7 @@ export default {
 		this.coverStorage = '计算失败';
 		this.indexStorage = '计算失败';
 		this.bookmarkIndexStorage = '计算失败';
+		this.illustrationStorage = '计算失败';
 	},
 
 	async calculateStorage(bookDirUri, coverUri, bookInfoUri) {
@@ -259,30 +265,37 @@ export default {
 		this.coverStorage = '计算中...';
 		this.indexStorage = '计算中...';
 		this.bookmarkIndexStorage = '计算中...';
+		this.illustrationStorage = '计算中...';
 
 		try {
 			const bookContentDirUri = `${bookDirUri}content/`;
 			const indexesUri = `${bookDirUri}indexes/`;
 			const lindexUri = `${bookDirUri}lindex.txt`;
 
-			const [chapterSize, coverSize, indexSize, bookmarkSize] = await Promise.all([
+			const [chapterSize, coverSize, indexSize, bookmarkSize, totalBookDirSize] = await Promise.all([
 				this.getDirSize(bookContentDirUri),
 				coverUri ? this.getFileSize(coverUri) : 0,
 				this.getIndexTotalSize(bookInfoUri, lindexUri, indexesUri),
-				this.getBookmarkSize()
+				this.getBookmarkSize(),
+				this.getDirSize(bookDirUri)
 			]);
+
+			const bookDirKnownSize = chapterSize + coverSize + (indexSize || 0);
+			const illustrationSize = Math.max(0, totalBookDirSize - bookDirKnownSize);
 
 			this.chapterStorage = this.formatFileSize(chapterSize);
 			this.coverStorage = this.formatFileSize(coverSize);
 			this.indexStorage = this.formatFileSize(indexSize);
 			this.bookmarkIndexStorage = this.formatFileSize(bookmarkSize);
-			this.totalStorage = this.formatFileSize(chapterSize + coverSize + indexSize + bookmarkSize);
+			this.illustrationStorage = this.formatFileSize(illustrationSize);
+			this.totalStorage = this.formatFileSize(totalBookDirSize + bookmarkSize);
 		} catch (e) {
 			this.totalStorage = '计算失败';
 			this.chapterStorage = '计算失败';
 			this.coverStorage = '计算失败';
 			this.indexStorage = '计算失败';
 			this.bookmarkIndexStorage = '计算失败';
+			this.illustrationStorage = '计算失败';
 		}
 	},
 

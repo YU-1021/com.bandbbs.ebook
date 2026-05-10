@@ -16,6 +16,13 @@
 			  </div>
 			  <img src="{{boldEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
 		  </list-item>
+		  <list-item class="item" @click="toggleIllustration" type="item">
+			  <div class="item-content">
+				  <text class="itemtext" static>插图显示</text>
+				  <text class="itemtext2" static>阅读页显示插图</text>
+			  </div>
+			  <img src="{{illustrationEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" style="width:64px;height: 48px;"/>
+		  </list-item>
 		  <list-item class="item" @click="toggleDefaultKeepScreenOn" type="item">
 			  <div class="item-content">
 				  <text class="itemtext" static>默认屏幕常亮</text>
@@ -154,6 +161,7 @@
       timeFormat: '24h',
 	  readMode: 'scroll',
 	  boldEnabled: true,
+	  illustrationEnabled: true,
 	  defaultKeepScreenOn: true
 	},
 	
@@ -193,6 +201,11 @@
 	  }, fail: () => {
 		this.boldEnabled = true;
 	  }});
+	  storage.get({ key: 'EBOOK_ILLUSTRATION_ENABLED', success: (data) => {
+		this.illustrationEnabled = data ? data === 'true' : true;
+	  }, fail: () => {
+		this.illustrationEnabled = true;
+	  }});
 	  storage.get({ key: 'EBOOK_DEFAULT_KEEP_SCREEN_ON', success: (data) => {
 		this.defaultKeepScreenOn = data ? data === 'true' : true;
 	  }, fail: () => {
@@ -223,6 +236,14 @@
 	  storage.set({
 		key: 'EBOOK_BOLD_ENABLED',
 		value: this.boldEnabled.toString()
+	  });
+	},
+
+	toggleIllustration() {
+	  this.illustrationEnabled = !this.illustrationEnabled;
+	  storage.set({
+		key: 'EBOOK_ILLUSTRATION_ENABLED',
+		value: this.illustrationEnabled.toString()
 	  });
 	},
 
