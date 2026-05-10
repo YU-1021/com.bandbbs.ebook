@@ -14,6 +14,10 @@
             <text class="itemtext" static>粗体字体</text>
             <img src="{{boldEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch" />
         </list-item>
+		<list-item class="item" @click="toggleIllustration" type="item">
+            <text class="itemtext" static>插图显示</text>
+            <img src="{{illustrationEnabled ? '/common/images/Switch_ON.png' : '/common/images/Switch_OFF.png'}}" class="switch" />
+        </list-item>
 		<list-item class="item" @click="routerTo('screenBrightness')" type="item">
             <text class="itemtext" static>屏幕亮度</text>
             <img src="/common/images/enter.png" class="arrow" static />
@@ -79,7 +83,8 @@ export default {
     private: {
         chapterSwitchStyle: 'button',
         readMode: 'scroll',
-        boldEnabled: true
+        boldEnabled: true,
+        illustrationEnabled: true
     },
 
     onInit() {
@@ -112,6 +117,19 @@ export default {
                 this.boldEnabled = true;
             }
         });
+        storage.get({
+            key: 'EBOOK_ILLUSTRATION_ENABLED',
+            success: (data) => {
+                if (data !== undefined && data !== '') {
+                    this.illustrationEnabled = data === 'true';
+                } else {
+                    this.illustrationEnabled = true;
+                }
+            },
+            fail: () => {
+                this.illustrationEnabled = true;
+            }
+        });
     },
 
     routerTo(url) {
@@ -129,6 +147,14 @@ export default {
         storage.set({
             key: 'EBOOK_BOLD_ENABLED',
             value: this.boldEnabled.toString()
+        });
+    },
+
+    toggleIllustration() {
+        this.illustrationEnabled = !this.illustrationEnabled;
+        storage.set({
+            key: 'EBOOK_ILLUSTRATION_ENABLED',
+            value: this.illustrationEnabled.toString()
         });
     }
 }
