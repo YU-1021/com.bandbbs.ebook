@@ -397,7 +397,10 @@ export default {
 
 		const lastSeg = this.page2 || this.page1
 		const isLastSeg = lastSeg && (lastSeg.offset + lastSeg.length) >= this.allSize
-		if (this.contentHeight > this.scrollHeight && isLastSeg) {
+		const isShortChapterAtEnd = isLastSeg && this.contentHeight > 0 && this.contentHeight <= this.scrollHeight
+		if (isShortChapterAtEnd) {
+			if (!this.isAtChapterEnd) this.isAtChapterEnd = true
+		} else if (this.contentHeight > this.scrollHeight && isLastSeg) {
 			const threshold = this.getChapterEndTriggerThreshold()
 			const isNearBottom = this.currentScrollTop >= (this.contentHeight - this.scrollHeight - threshold)
 			if (this.isAtChapterEnd !== isNearBottom) this.isAtChapterEnd = isNearBottom
@@ -1023,7 +1026,10 @@ export default {
 
 		const lastSeg = this.page2 || this.page1
 		const isLastSeg = lastSeg && (lastSeg.offset + lastSeg.length) >= this.allSize
-		if (this.contentHeight > this.scrollHeight && isLastSeg) {
+		const isShortChapterAtEnd = isLastSeg && this.contentHeight > 0 && this.contentHeight <= this.scrollHeight
+		if (isShortChapterAtEnd) {
+			if (!this.isAtChapterEnd) this.isAtChapterEnd = true
+		} else if (this.contentHeight > this.scrollHeight && isLastSeg) {
 			const threshold = this.getChapterEndTriggerThreshold()
 			const endTriggerTop = this.contentHeight - this.scrollHeight - threshold
 			const isNearBottom = this.currentScrollTop >= endTriggerTop
