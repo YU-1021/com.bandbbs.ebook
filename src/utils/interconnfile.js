@@ -23,12 +23,14 @@ export default class interconnfile {
     syncedChapterIndices = new Set();
     currentBookCoverUri = null;
     currentIllustrationUri = null;
+    currentIllustrationRelativePath = "";
     pendingChapterMetas = [];
     BATCH_WRITE_SIZE = 15;
     CHAPTERS_PER_FILE = 100;
     lindexContent = null;
 
     chapterWriteState = new Map();
+    illustrationWriteState = new Map();
     
     dirtyLindex = false;
     lastLindexFlushTime = 0;
@@ -130,9 +132,11 @@ export default class interconnfile {
         this.pendingChapterMetas = [];
         this.currentBookCoverUri = null;
         this.currentIllustrationUri = null;
+        this.currentIllustrationRelativePath = "";
         this.currentChapterMeta = null;
         this.currentSavingChapterIndex = -1;
         this.chapterWriteState.clear();
+        this.illustrationWriteState.clear();
         this.dirtyLindex = false;
         this.lastLindexFlushTime = 0;
         this.flushingMetas = false;
@@ -174,6 +178,15 @@ export default class interconnfile {
 
     generateCoverFileName() {
         return `cover_${Math.random().toString(36).substring(2, 10)}.jpg`;
+    }
+
+    normalizeIllustrationRelativePath(relativePath) {
+        const normalizedPath = (relativePath || '').replace(/^\/+/, '');
+        const pathParts = normalizedPath.split('/').filter(Boolean);
+        if (pathParts.length === 0 || pathParts.some(part => part === '.' || part === '..')) {
+            throw new Error('插图路径无效');
+        }
+        return pathParts.join('/');
     }
 
     async getBookStatus({ filename }) {
@@ -428,11 +441,8 @@ export default class interconnfile {
         const bookUri = this.baseUri + this.currentBookDir;
         await this.ensureDir(bookUri);
 
-        const normalizedPath = (relativePath || '').replace(/^\/+/, '');
-        const pathParts = normalizedPath.split('/').filter(Boolean);
-        if (pathParts.length === 0) {
-            throw new Error('插图路径无效');
-        }
+        const normalizedPath = this.normalizeIllustrationRelativePath(relativePath);
+        const pathParts = normalizedPath.split('/');
 
         let currentDir = bookUri;
         for (let i = 0; i < pathParts.length - 1; i++) {
@@ -440,17 +450,63 @@ export default class interconnfile {
             await this.ensureDir(currentDir);
         }
 
+        this.currentIllustrationRelativePath = normalizedPath;
         this.currentIllustrationUri = `${bookUri}/${normalizedPath}`;
-        try {
-            await runAsyncFunc(file.delete, { uri: this.currentIllustrationUri });
-        } catch (e) {}
+        this.illustrationWriteState.set(normalizedPath, {
+            started: false,
+            completed: false,
+            lastChunkNum: -1,
+            totalChunks: 0
+        });
 
         this.send({ type: "illustration_ready" });
     }
 
-    async saveIllustrationChunk({ chunkIndex, data }) {
-        if (!this.currentIllustrationUri) {
+    async saveIllustrationChunk({ relativePath, chunkIndex, totalChunks, data }) {
+        if (!this.currentIllustrationUri || !this.currentIllustrationRelativePath) {
             throw new Error('插图接收状态缺失');
+        }
+
+        const normalizedPath = this.normalizeIllustrationRelativePath(relativePath || this.currentIllustrationRelativePath);
+        if (normalizedPath !== this.currentIllustrationRelativePath) {
+            throw new Error('插图路径不匹配');
+        }
+
+        const state = this.illustrationWriteState.get(normalizedPath) || {
+            started: false,
+            completed: false,
+            lastChunkNum: -1,
+            totalChunks: 0
+        };
+        const isFirstChunk = chunkIndex === 0;
+
+        if (state.completed && !isFirstChunk) {
+            await this.send({ type: "illustration_chunk_received" });
+            return;
+        }
+
+        if (isFirstChunk) {
+            state.started = true;
+            state.completed = false;
+            state.lastChunkNum = -1;
+            state.totalChunks = totalChunks || 0;
+            try {
+                await runAsyncFunc(file.delete, { uri: this.currentIllustrationUri });
+            } catch (e) {}
+        } else {
+            if (!state.started) {
+                throw new Error('插图首个分块缺失');
+            }
+            if (state.totalChunks && totalChunks && state.totalChunks !== totalChunks) {
+                throw new Error('插图分块总数不一致');
+            }
+            if (chunkIndex <= state.lastChunkNum) {
+                await this.send({ type: "illustration_chunk_received" });
+                return;
+            }
+            if (chunkIndex !== state.lastChunkNum + 1) {
+                throw new Error('插图分块顺序异常');
+            }
         }
 
         const illustrationBytes = this.base64ToArrayBuffer(data);
@@ -458,15 +514,31 @@ export default class interconnfile {
             await runAsyncFunc(file.writeArrayBuffer, {
                 uri: this.currentIllustrationUri,
                 buffer: new Uint8Array(illustrationBytes),
-                append: chunkIndex > 0,
+                append: !isFirstChunk,
             });
         }
 
-        this.send({ type: "illustration_chunk_received" });
+        state.lastChunkNum = chunkIndex;
+        if (state.totalChunks > 0 && chunkIndex === state.totalChunks - 1) {
+            state.completed = true;
+        }
+        this.illustrationWriteState.set(normalizedPath, state);
+
+        await this.send({ type: "illustration_chunk_received" });
     }
 
-    async completeIllustrationTransfer() {
+    async completeIllustrationTransfer({ relativePath }) {
+        const normalizedPath = this.normalizeIllustrationRelativePath(relativePath || this.currentIllustrationRelativePath);
+        const state = this.illustrationWriteState.get(normalizedPath);
+        if (!state || !state.started) {
+            throw new Error('插图传输未开始');
+        }
+        if (state.totalChunks > 0 && state.lastChunkNum !== state.totalChunks - 1) {
+            throw new Error('插图传输未完成');
+        }
+
         this.currentIllustrationUri = null;
+        this.currentIllustrationRelativePath = "";
         this.send({ type: "illustration_saved" });
         global.runGC();
     }
