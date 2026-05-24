@@ -1078,12 +1078,10 @@ export default {
 		}
 
 		this.readFileText(newOffset, (str, bytesRead) => {
-			this.loadingNext = false
 			if (str) {
-				setTimeout(() => {
-					this.shiftPagesForward(this.buildSegmentData(str, newOffset, bytesRead))
-				}, 30)
+				this.shiftPagesForward(this.buildSegmentData(str, newOffset, bytesRead))
 			} else {
+				this.loadingNext = false
 				this.wait = false
 				this.calculateDisplayProgress()
 			}
@@ -1095,24 +1093,27 @@ export default {
 		const page1El = this.$element("page1")
 
 		const applyShift = (removeHeight) => {
-			this.page1 = this.page2
-			this.page2 = nextPageData
 			const safeRemoveHeight = Math.max(0, Math.floor(removeHeight || 0))
 			const newScrollPos = Math.max(0, scrollPosBeforeLoad - safeRemoveHeight)
+			
+			this.page1 = this.page2
+			this.page2 = nextPageData
+			this.currentFileOffset = this.page1.offset
+			
 			this.scrollTopValue = newScrollPos
 			this.currentScrollTop = newScrollPos
 			this.savedScrollOffset = newScrollPos
-			this.currentFileOffset = this.page1.offset
+			this.loadingNext = false
+			this.wait = false
+			
 			this.calculateDisplayProgress()
 			this.saveData(true)
-			this.wait = false
 			this.updateContentHeight(true)
 		}
 
 		if (!page1El) {
 			const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
 			applyShift(estimatedHeight)
-			this.calculateDisplayProgress()
 			return
 		}
 
@@ -1121,7 +1122,6 @@ export default {
 			fail: () => {
 				const estimatedHeight = this.estimateTextHeightByText(this.page1 ? this.page1.text : '')
 				applyShift(estimatedHeight)
-				this.calculateDisplayProgress()
 			}
 		})
 	},
@@ -1134,24 +1134,28 @@ export default {
 			return
 		}
 		const oldPage1 = this.page1
+		const scrollPosBeforeLoad = this.currentScrollTop
 
 		const newOffset = Math.max(0, this.page1.offset - this.txtSizePage * 2)
 		this.readFileText(newOffset, (str, bytesRead) => {
-			this.loadingPrev = false
 			if (str) {
 				const prevPageData = this.buildSegmentData(str, newOffset, bytesRead)
 				const applyShift = (addHeight) => {
+					const safeAddHeight = Math.max(0, Math.floor(addHeight || 0))
+					const newScrollPos = Math.max(0, scrollPosBeforeLoad + safeAddHeight)
+					
 					this.page2 = oldPage1
 					this.page1 = prevPageData
-					const safeAddHeight = Math.max(0, Math.floor(addHeight || 0))
-					const newScrollPos = Math.max(0, this.currentScrollTop + safeAddHeight)
+					this.currentFileOffset = this.page1.offset
+					
 					this.scrollTopValue = newScrollPos
 					this.currentScrollTop = newScrollPos
 					this.savedScrollOffset = newScrollPos
-					this.currentFileOffset = this.page1.offset
+					this.loadingPrev = false
+					this.wait = false
+					
 					this.calculateDisplayProgress()
 					this.saveData(true)
-					this.wait = false
 					this.updateContentHeight(true)
 				}
 
@@ -1159,7 +1163,6 @@ export default {
 				if (!oldPage1El) {
 					const estimatedHeight = this.estimateTextHeightByText(oldPage1 ? oldPage1.text : '')
 					applyShift(estimatedHeight)
-					this.calculateDisplayProgress()
 					return
 				}
 
@@ -1168,10 +1171,10 @@ export default {
 					fail: () => {
 						const estimatedHeight = this.estimateTextHeightByText(oldPage1 ? oldPage1.text : '')
 						applyShift(estimatedHeight)
-						this.calculateDisplayProgress()
 					}
 				})
 			} else {
+				this.loadingPrev = false
 				this.wait = false
 			}
 		})
